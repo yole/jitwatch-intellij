@@ -17,12 +17,12 @@ import org.adoptopenjdk.jitwatch.model.bytecode.*
 import org.adoptopenjdk.jitwatch.util.ParseUtil
 import java.awt.Color
 
-class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, List<LineAnnotation>>>>() {
+class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, LineAnnotation>>>() {
     override fun collectInformation(file: PsiFile): PsiFile? {
         return file
     }
 
-    override fun doAnnotate(psiFile: PsiFile?): List<Pair<PsiElement, List<LineAnnotation>>>? {
+    override fun doAnnotate(psiFile: PsiFile?): List<Pair<PsiElement, LineAnnotation>>? {
         if (psiFile == null) return null
         val service = JitWatchModelService.getInstance(psiFile.project)
         val languageSupport = LanguageSupport.forLanguage(psiFile.language) ?: return emptyList()
@@ -36,8 +36,8 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, List
 
     private fun mapBytecodeAnnotationsToSource(psiFile: PsiFile,
                                                classBC: ClassBC,
-                                               bytecodeAnnotations: Map<IMetaMember, BytecodeAnnotations>): List<Pair<PsiElement, List<LineAnnotation>>> {
-        val result = mutableListOf<Pair<PsiElement, List<LineAnnotation>>>()
+                                               bytecodeAnnotations: Map<IMetaMember, BytecodeAnnotations>): List<Pair<PsiElement, LineAnnotation>> {
+        val result = mutableListOf<Pair<PsiElement, LineAnnotation>>()
         val languageSupport = LanguageSupport.forLanguage(psiFile.language) ?: return emptyList()
 
         for (cls in languageSupport.getAllClasses(psiFile)) {
@@ -49,15 +49,12 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, List
                     val annotationsForBCI = annotations.getAnnotationsForBCI(instruction.offset)
                     if (annotationsForBCI.isNullOrEmpty()) continue
 
-                    val elementToAnnotationsMap = mutableMapOf<PsiElement, MutableList<LineAnnotation>>()
                     for (lineAnnotation in annotationsForBCI) {
                         val sourceElement = mapBytecodeAnnotationToSource(method, member, memberBytecode, instruction, lineAnnotation)
                         if (sourceElement != null) {
-                            val list = elementToAnnotationsMap.getOrPut(sourceElement) { mutableListOf<LineAnnotation>() }
-                            list.add(lineAnnotation)
+                            result.add(sourceElement to lineAnnotation)
                         }
                     }
-                    elementToAnnotationsMap.mapTo(result) { it.key to it.value }
                 }
             }
         }
@@ -103,7 +100,7 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, List
         return lineStartOffset
     }
 
-    override fun apply(file: PsiFile, annotationResult: List<Pair<PsiElement, List<LineAnnotation>>>?, holder: AnnotationHolder) {
+    override fun apply(file: PsiFile, annotationResult: List<Pair<PsiElement, LineAnnotation>>?, holder: AnnotationHolder) {
         if (annotationResult == null) return
 
         for (pair in annotationResult) {
@@ -111,15 +108,16 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, List
         }
     }
 
-    private fun applyAnnotation(element: PsiElement, lineAnnotations: List<LineAnnotation>, holder: AnnotationHolder) {
-        val annotation = holder.createInfoAnnotation(element, lineAnnotations.joinToString(separator = "\n") { it.annotation })
-        var color: Color? = null
-        if (lineAnnotations.any { it.type == BCAnnotationType.INLINE_FAIL }) {
-            color = JBColor.RED
+    private fun applyAnnotation(element: PsiElement, lineAnnotation: LineAnnotation, holder: AnnotationHolder) {
+        val annotation = holder.createInfoAnnotation(element, lineAnnotation.annotation)
+        val color: Color? = when (lineAnnotation.type) {
+            BCAnnotationType.INLINE_SUCCESS, BCAnnotationType.ELIMINATED_ALLOCATION -> JBColor.GREEN
+
+            BCAnnotationType.INLINE_FAIL -> JBColor.RED
+
+            else -> null
         }
-        else if (lineAnnotations.any { it.type == BCAnnotationType.INLINE_SUCCESS || it.type == BCAnnotationType.ELIMINATED_ALLOCATION }) {
-            color = JBColor.GREEN
-        }
+
         if (color != null) {
             annotation.enforcedTextAttributes = underline(color)
         }
