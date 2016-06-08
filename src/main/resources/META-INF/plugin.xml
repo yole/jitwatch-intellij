@@ -10,6 +10,12 @@
     
     <idea-version since-build="145.1"/>
 
+    <extensionPoints>
+        <extensionPoint qualifiedName="ru.yole.jitwatch.languageSupport" beanClass="com.intellij.lang.LanguageExtensionPoint">
+            <with attribute="implementationClass" implements="ru.yole.jitwatch.JitWatchLanguageSupport"/>
+        </extensionPoint>
+    </extensionPoints>
+
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceInterface="ru.yole.jitwatch.JitWatchModelService"
                         serviceImplementation="ru.yole.jitwatch.JitWatchModelService"/>
@@ -19,6 +25,11 @@
 
         <toolWindow id="JitWatch" factoryClass="ru.yole.jitwatch.JitToolWindowFactory" anchor="right" canCloseContents="false"/>
     </extensions>
+
+    <extensions defaultExtensionNs="ru.yole.jitwatch">
+        <languageSupport language="JAVA" implementationClass="ru.yole.jitwatch.JitWatchJavaSupport"/>
+    </extensions>
+
 
     <actions>
         <action class="ru.yole.jitwatch.LoadLogAction" id="JitWatch.LoadLog"

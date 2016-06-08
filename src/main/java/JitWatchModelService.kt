@@ -1,7 +1,6 @@
 package ru.yole.jitwatch
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
-import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.module.ModuleUtil
@@ -12,8 +11,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiElement
 import org.adoptopenjdk.jitwatch.core.HotSpotLogParser
 import org.adoptopenjdk.jitwatch.core.IJITListener
 import org.adoptopenjdk.jitwatch.core.ILogParseErrorListener
@@ -73,22 +71,24 @@ class JitWatchModelService(private val project: Project) {
         DaemonCodeAnalyzer.getInstance(project).restart()
     }
 
-    fun getMetaClass(cls: PsiClass?): MetaClass? {
+    fun getMetaClass(cls: PsiElement?): MetaClass? {
         if (cls == null) return null
         return model?.let {
-            val classQName = JVMNameUtil.getClassVMName(cls)
+            val languageSupport = LanguageSupport.forLanguage(cls.language) ?: return null
+            val classQName = languageSupport.getClassVMName(cls)
             it.packageManager.getMetaClass(classQName)
         }
     }
 
-    fun getMetaMember(method: PsiMethod): IMetaMember? {
-        val metaClass = getMetaClass(method.containingClass) ?: return null
-        return metaClass.metaMembers.find { it.matchesSignature(method) }
+    fun getMetaMember(method: PsiElement): IMetaMember? {
+        val languageSupport = LanguageSupport.forLanguage(method.language) ?: return null
+        val metaClass = getMetaClass(languageSupport.getContainingClass(method)) ?: return null
+        return metaClass.metaMembers.find { languageSupport.matchesSignature(it, method) }
     }
 
-    fun loadBytecodeAsync(psiClass: PsiClass, callback: (ClassBC?, Map<IMetaMember, BytecodeAnnotations>?) -> Unit) {
+    fun loadBytecodeAsync(cls: PsiElement, callback: (ClassBC?, Map<IMetaMember, BytecodeAnnotations>?) -> Unit) {
         ApplicationManager.getApplication().executeOnPooledThread {
-            val bytecodeResult = loadBytecode(psiClass)
+            val bytecodeResult = loadBytecode(cls)
 
             SwingUtilities.invokeLater {
                 callback(bytecodeResult?.first, bytecodeResult?.second)
@@ -96,15 +96,15 @@ class JitWatchModelService(private val project: Project) {
         }
     }
 
-    fun loadBytecode(psiClass: PsiClass): Pair<ClassBC, Map<IMetaMember, BytecodeAnnotations>>? {
-        val module = ModuleUtil.findModuleForPsiElement(psiClass) ?: return null
+    fun loadBytecode(cls: PsiElement): Pair<ClassBC, Map<IMetaMember, BytecodeAnnotations>>? {
+        val module = ModuleUtil.findModuleForPsiElement(cls) ?: return null
         val outputRoots = CompilerModuleExtension.getInstance(module)!!.getOutputRoots(true)
                 .map { it.canonicalPath }
-        val metaClass = ApplicationManager.getApplication().runReadAction(Computable { getMetaClass(psiClass) }) ?: return null
+        val metaClass = ApplicationManager.getApplication().runReadAction(Computable { getMetaClass(cls) }) ?: return null
 
         val classBC = metaClass.getClassBytecode(JitWatchModelService.getInstance(project).model, outputRoots)
 
-        return classBC to bytecodeAnnotations.getOrPut(psiClass.containingFile.virtualFile) {
+        return classBC to bytecodeAnnotations.getOrPut(cls.containingFile.virtualFile) {
             buildAllBytecodeAnnotations(metaClass)
         }
     }
@@ -117,15 +117,4 @@ class JitWatchModelService(private val project: Project) {
     companion object {
         fun getInstance(project: Project) = ServiceManager.getService(project, JitWatchModelService::class.java)
     }
-}
-
-fun IMetaMember.matchesSignature(method: PsiMethod): Boolean {
-    if (memberName != method.name) return false
-    val paramTypes = paramTypeNames zip method.parameterList.parameters.map { it.type.canonicalText }
-    if (paramTypes.any { it.first != it.second})
-        return false
-    val psiMethodReturnTypeName = if (method.isConstructor) "void" else method.returnType?.canonicalText ?: ""
-    if (returnTypeName != psiMethodReturnTypeName)
-        return false
-    return true
 }

@@ -6,55 +6,67 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.markup.EffectType
 import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.util.Computable
-import com.intellij.psi.*
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiWhiteSpace
 import com.intellij.ui.JBColor
 import com.intellij.util.containers.isNullOrEmpty
 import org.adoptopenjdk.jitwatch.model.IMetaMember
 import org.adoptopenjdk.jitwatch.model.bytecode.*
 import org.adoptopenjdk.jitwatch.util.ParseUtil
 
-class JitSourceAnnotator : ExternalAnnotator<PsiClass, List<Pair<PsiElement, LineAnnotation>>>() {
-    override fun collectInformation(file: PsiFile): PsiClass? {
-        return (file as? PsiJavaFile)?.classes?.firstOrNull()
+class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, LineAnnotation>>>() {
+    override fun collectInformation(file: PsiFile): PsiFile? {
+        return file
     }
 
-    override fun doAnnotate(collectedInfo: PsiClass?): List<Pair<PsiElement, LineAnnotation>>? {
-        if (collectedInfo == null) return null
-        val service = JitWatchModelService.getInstance(collectedInfo.project)
-        val (classBC, bytecodeAnnotations) = service.loadBytecode(collectedInfo) ?: return null
+    override fun doAnnotate(psiFile: PsiFile?): List<Pair<PsiElement, LineAnnotation>>? {
+        if (psiFile == null) return null
+        val service = JitWatchModelService.getInstance(psiFile.project)
+        val languageSupport = LanguageSupport.forLanguage(psiFile.language) ?: return emptyList()
+        val cls = languageSupport.getAllClasses(psiFile).firstOrNull() ?: return emptyList()
+
+        val (classBC, bytecodeAnnotations) = service.loadBytecode(cls) ?: return null
         return ApplicationManager.getApplication().runReadAction(Computable {
-            mapBytecodeAnnotationsToSource(collectedInfo, classBC, bytecodeAnnotations)
+            mapBytecodeAnnotationsToSource(psiFile, classBC, bytecodeAnnotations)
         })
     }
 
-    private fun mapBytecodeAnnotationsToSource(psiClass: PsiClass,
+    private fun mapBytecodeAnnotationsToSource(psiFile: PsiFile,
                                                classBC: ClassBC,
                                                bytecodeAnnotations: Map<IMetaMember, BytecodeAnnotations>): List<Pair<PsiElement, LineAnnotation>> {
         val result = mutableListOf<Pair<PsiElement, LineAnnotation>>()
-        for (method in psiClass.methods + psiClass.constructors) {
-            val member = bytecodeAnnotations.keys.find { it.matchesSignature(method) } ?: continue
-            val annotations = bytecodeAnnotations[member] ?: continue
-            val memberBytecode = classBC.getMemberBytecode(member) ?: continue
-            for (instruction in memberBytecode.instructions) {
-                val annotationsForBCI = annotations.getAnnotationsForBCI(instruction.offset)
-                if (annotationsForBCI.isNullOrEmpty()) continue
-                for (lineAnnotation in annotationsForBCI) {
-                    val sourceElement = mapBytecodeAnnotationToSource(method, member, memberBytecode, instruction, lineAnnotation)
-                    if (sourceElement != null) {
-                        result.add(sourceElement to lineAnnotation)
+        val languageSupport = LanguageSupport.forLanguage(psiFile.language) ?: return emptyList()
+
+        for (cls in languageSupport.getAllClasses(psiFile)) {
+            for (method in languageSupport.getAllMethods(cls)) {
+                val member = bytecodeAnnotations.keys.find { languageSupport.matchesSignature(it, method) } ?: continue
+                val annotations = bytecodeAnnotations[member] ?: continue
+                val memberBytecode = classBC.getMemberBytecode(member) ?: continue
+                for (instruction in memberBytecode.instructions) {
+                    val annotationsForBCI = annotations.getAnnotationsForBCI(instruction.offset)
+                    if (annotationsForBCI.isNullOrEmpty()) continue
+                    for (lineAnnotation in annotationsForBCI) {
+                        val sourceElement = mapBytecodeAnnotationToSource(method, member, memberBytecode, instruction, lineAnnotation)
+                        if (sourceElement != null) {
+                            result.add(sourceElement to lineAnnotation)
+                        }
                     }
                 }
             }
         }
+
         return result
     }
 
-    private fun mapBytecodeAnnotationToSource(method: PsiMethod,
+    private fun mapBytecodeAnnotationToSource(method: PsiElement,
                                               member: IMetaMember,
                                               memberBytecode: MemberBytecode,
                                               instruction: BytecodeInstruction,
                                               annotation: LineAnnotation): PsiElement? {
+        val languageSupport = LanguageSupport.forLanguage(method.language) ?: return null
+
         val sourceLine = memberBytecode.lineTable.findSourceLineForBytecodeOffset(instruction.offset)
         if (sourceLine == -1) return null
 
@@ -64,28 +76,13 @@ class JitSourceAnnotator : ExternalAnnotator<PsiClass, List<Pair<PsiElement, Lin
         while (lineStartOffset < document.textLength && psiFile.findElementAt(lineStartOffset) is PsiWhiteSpace) {
             lineStartOffset++
         }
-        val statement = PsiTreeUtil.getParentOfType(psiFile.findElementAt(lineStartOffset), PsiStatement::class.java) ?: return null
 
         if (annotation.type == BCAnnotationType.INLINE_SUCCESS || annotation.type == BCAnnotationType.INLINE_FAIL) {
             val model = JitWatchModelService.getInstance(method.project).model
             val calleeMember = ParseUtil.getMemberFromBytecodeComment(model, member, instruction) ?: return null
-            return findCallToMember(statement, calleeMember)
+            return languageSupport.findCallToMember(psiFile, lineStartOffset, calleeMember)
         }
         return null
-    }
-
-    private fun findCallToMember(context: PsiElement, calleeMember: IMetaMember): PsiCallExpression? {
-        var result: PsiCallExpression? = null
-        context.acceptChildren(object : JavaRecursiveElementVisitor() {
-            override fun visitCallExpression(callExpression: PsiCallExpression) {
-                super.visitCallExpression(callExpression)
-                val method = callExpression.resolveMethod()
-                if (method != null && calleeMember.matchesSignature(method)) {
-                    result = callExpression
-                }
-            }
-        })
-        return result
     }
 
     override fun apply(file: PsiFile, annotationResult: List<Pair<PsiElement, LineAnnotation>>?, holder: AnnotationHolder) {

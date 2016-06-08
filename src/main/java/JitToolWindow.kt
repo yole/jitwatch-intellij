@@ -2,7 +2,6 @@ package ru.yole.jitwatch
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
-import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.Result
 import com.intellij.openapi.command.WriteCommandAction
@@ -24,10 +23,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
-import com.intellij.psi.PsiJavaFile
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiMethod
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.content.ContentFactory
 import com.intellij.util.containers.isNullOrEmpty
@@ -59,7 +56,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
     private var bytecodeTextBuilder: BytecodeTextBuilder? = null
     private var activeSourceEditor: Editor? = null
-    private var activeSourceFile: PsiJavaFile? = null
+    private var activeSourceFile: PsiFile? = null
 
     init {
         project.messageBus.connect(this).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerAdapter() {
@@ -91,12 +88,13 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
         if (modelService.model == null)
             return showMessage("Please open a HotSpot compilation log")
-        if (file?.fileType != JavaFileType.INSTANCE)
-            return showMessage("Please select a Java file")
 
-        activeSourceFile = PsiManager.getInstance(project).findFile(file!!) as? PsiJavaFile
-            ?: return showMessage("Please select a Java file")
-        val psiClass = activeSourceFile!!.classes.firstOrNull()
+        activeSourceFile = PsiManager.getInstance(project).findFile(file!!)
+            ?: return showMessage("Please select a source file")
+        val languageSupport = LanguageSupport.forLanguage(activeSourceFile!!.language)
+            ?: return showMessage("Please select a file in a supported language")
+
+        val psiClass = languageSupport.getAllClasses(activeSourceFile!!).firstOrNull()
             ?: return showMessage("Please select a Java file that contains classes")
 
         modelService.loadBytecodeAsync(psiClass) { classBC, annotationsMap ->
@@ -183,8 +181,8 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
     private fun syncBytecodeToEditor(caretPosition: LogicalPosition) {
         val caretOffset = activeSourceEditor!!.logicalPositionToOffset(caretPosition)
-        val elementAtCaret = activeSourceFile!!.findElementAt(caretOffset) ?: return
-        val methodAtCaret = PsiTreeUtil.getParentOfType(elementAtCaret, PsiMethod::class.java) ?: return
+        val languageSupport = LanguageSupport.forLanguage(activeSourceFile!!.language)
+        val methodAtCaret = languageSupport.findMethodAtOffset(activeSourceFile!!, caretOffset) ?: return
         val metaMember = modelService.getMetaMember(methodAtCaret) ?: return
         val lineTableEntry = metaMember.memberBytecode.lineTable.getEntryForSourceLine(caretPosition.line + 1) ?: return
         val bytecodeLine = bytecodeTextBuilder?.findLine(metaMember, lineTableEntry.bytecodeOffset) ?: return
