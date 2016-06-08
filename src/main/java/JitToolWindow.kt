@@ -4,7 +4,6 @@ import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.Result
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
@@ -21,9 +20,7 @@ import com.intellij.openapi.editor.markup.MarkupModel
 import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.*
 import com.intellij.openapi.fileTypes.PlainTextFileType
-import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
@@ -37,13 +34,11 @@ import com.intellij.util.containers.isNullOrEmpty
 import org.adoptopenjdk.jitwatch.model.IMetaMember
 import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.adoptopenjdk.jitwatch.model.bytecode.BCAnnotationType
-import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeAnnotationBuilder
 import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeAnnotations
 import java.awt.CardLayout
 import java.awt.Color
 import javax.swing.JLabel
 import javax.swing.JPanel
-import javax.swing.SwingUtilities
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.jvm.isAccessible
 
@@ -104,43 +99,20 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         val psiClass = activeSourceFile!!.classes.firstOrNull()
             ?: return showMessage("Please select a Java file that contains classes")
 
-        val metaClass = modelService.getMetaClass(psiClass)
-            ?: return showMessage("Please select a file for which compilation information is available")
-
-        loadAndShowBytecode(file, metaClass)
+        modelService.loadBytecodeAsync(psiClass) { classBC, annotationsMap ->
+            if (classBC != null && annotationsMap != null) {
+                showBytecode(modelService.getMetaClass(psiClass)!!, annotationsMap)
+            }
+            else {
+                showMessage("Couldn't load bytecode for selected class")
+            }
+        }
     }
 
     private fun showMessage(message: String) {
         messageLabel.text = message
         cardLayout.show(this, MESSAGE_CARD)
     }
-
-    private fun loadAndShowBytecode(file: VirtualFile, metaClass: MetaClass) {
-        val module = ModuleUtil.findModuleForFile(file, project)
-            ?: return showMessage("Please select a file under a source root")
-        val outputRoots = CompilerModuleExtension.getInstance(module)!!.getOutputRoots(true)
-            .map { it.canonicalPath }
-
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val classBC = metaClass.getClassBytecode(JitWatchModelService.getInstance(project).model, outputRoots)
-
-            val annotationsMap = buildAllBytecodeAnnotations(metaClass)
-
-            SwingUtilities.invokeLater {
-                if (classBC == null) {
-                    showMessage("Cannot find bytecode for selected class")
-                }
-                else {
-                    showBytecode(metaClass, annotationsMap)
-                }
-            }
-        }
-    }
-
-    private fun buildAllBytecodeAnnotations(metaClass: MetaClass): Map<IMetaMember, BytecodeAnnotations> =
-            metaClass.metaMembers.associate {
-                it to BytecodeAnnotationBuilder().buildBytecodeAnnotations(it, modelService.model)
-            }
 
     private fun showBytecode(metaClass: MetaClass, annotationsMap: Map<IMetaMember, BytecodeAnnotations>) {
         cardLayout.show(this, EDITOR_CARD)

@@ -15,6 +15,7 @@
                         serviceImplementation="ru.yole.jitwatch.JitWatchModelService"/>
 
         <codeInsight.lineMarkerProvider language="JAVA" implementationClass="ru.yole.jitwatch.JitLineMarkerProvider"/>
+        <externalAnnotator language="JAVA" implementationClass="ru.yole.jitwatch.JitSourceAnnotator"/>
 
         <toolWindow id="JitWatch" factoryClass="ru.yole.jitwatch.JitToolWindowFactory" anchor="right" canCloseContents="false"/>
     </extensions>
