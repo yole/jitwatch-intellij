@@ -3,21 +3,18 @@ package ru.yole.jitwatch
 import com.intellij.codeHighlighting.Pass
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
-import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import org.adoptopenjdk.jitwatch.model.IMetaMember
-import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
 
 class JitLineMarkerProvider : LineMarkerProvider {
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         val method = element as? PsiMethod ?: return null
         val modelService = JitWatchModelService.getInstance(element.project)
-        val metaClass = modelService.getMetaClass(method.containingClass) ?: return null
-        val memberSignature = method.memberSignature()
-        val metaMember = metaClass.getMemberForSignature(memberSignature) ?: return notCompiledMarker(method)
+        if (modelService.model == null) return null
+        val metaMember = modelService.getMetaMember(method) ?: return notCompiledMarker(method)
         return if (metaMember.isCompiled) metaMemberMarker(element, metaMember) else notCompiledMarker(method)
     }
 
@@ -53,10 +50,3 @@ class JitLineMarkerProvider : LineMarkerProvider {
 }
 
 private fun PsiMethod.nameRange() = nameIdentifier?.textRange ?: textRange
-
-private fun PsiMethod.memberSignature(): MemberSignatureParts {
-    val classQName = JVMNameUtil.getClassVMName(containingClass)
-    val returnType = returnType?.canonicalText ?: ""
-    val paramTypes = parameterList.parameters.map { it.type.canonicalText }
-    return MemberSignatureParts.fromParts(classQName, name, returnType, paramTypes)
-}

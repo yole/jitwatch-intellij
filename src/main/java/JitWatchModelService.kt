@@ -9,10 +9,12 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMethod
 import org.adoptopenjdk.jitwatch.core.HotSpotLogParser
 import org.adoptopenjdk.jitwatch.core.IJITListener
 import org.adoptopenjdk.jitwatch.core.ILogParseErrorListener
 import org.adoptopenjdk.jitwatch.core.JITWatchConfig
+import org.adoptopenjdk.jitwatch.model.IMetaMember
 import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel
 import org.adoptopenjdk.jitwatch.model.JITEvent
 import org.adoptopenjdk.jitwatch.model.MetaClass
@@ -71,7 +73,23 @@ class JitWatchModelService(private val project: Project) {
         }
     }
 
+    fun getMetaMember(method: PsiMethod): IMetaMember? {
+        val metaClass = getMetaClass(method.containingClass) ?: return null
+        return metaClass.metaMembers.find { it.matchesSignature(method) }
+    }
+
     companion object {
         fun getInstance(project: Project) = ServiceManager.getService(project, JitWatchModelService::class.java)
     }
+}
+
+fun IMetaMember.matchesSignature(method: PsiMethod): Boolean {
+    if (memberName != method.name) return false
+    val paramTypes = paramTypeNames zip method.parameterList.parameters.map { it.type.canonicalText }
+    if (paramTypes.any { it.first != it.second})
+        return false
+    val psiMethodReturnTypeName = if (method.isConstructor) "void" else method.returnType?.canonicalText ?: ""
+    if (returnTypeName != psiMethodReturnTypeName)
+        return false
+    return true
 }
