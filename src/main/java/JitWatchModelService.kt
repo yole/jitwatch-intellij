@@ -1,5 +1,6 @@
 package ru.yole.jitwatch
 
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
@@ -13,10 +14,14 @@ import org.adoptopenjdk.jitwatch.core.JITWatchConfig
 import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel
 import org.adoptopenjdk.jitwatch.model.JITEvent
 import java.io.File
+import javax.swing.SwingUtilities
 
 class JitWatchModelService(private val project: Project) {
     private val config = JITWatchConfig()
-    private var model: IReadOnlyJITDataModel? = null
+    private var _model: IReadOnlyJITDataModel? = null
+
+    val model: IReadOnlyJITDataModel?
+        get() = _model
 
     fun loadLog(logFile: VirtualFile) {
         val jitListener = object : IJITListener {
@@ -44,9 +49,15 @@ class JitWatchModelService(private val project: Project) {
                 val parser = HotSpotLogParser(jitListener)
                 parser.config = config
                 parser.processLogFile(File(logFile.canonicalPath), errorListener)
-                model = parser.model
+                _model = parser.model
+
+                SwingUtilities.invokeLater { modelUpdated() }
             }
         })
+    }
+
+    private fun modelUpdated() {
+        DaemonCodeAnalyzer.getInstance(project).restart()
     }
 
     companion object {

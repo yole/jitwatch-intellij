@@ -13,6 +13,8 @@
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceInterface="ru.yole.jitwatch.JitWatchModelService"
                         serviceImplementation="ru.yole.jitwatch.JitWatchModelService"/>
+
+        <codeInsight.lineMarkerProvider language="JAVA" implementationClass="ru.yole.jitwatch.JitLineMarkerProvider"/>
     </extensions>
 
     <actions>
