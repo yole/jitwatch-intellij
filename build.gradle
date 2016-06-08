@@ -1,0 +1,32 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url 'http://dl.bintray.com/jetbrains/intellij-plugin-service' }
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.0.2"
+    }
+}
+
+plugins {
+    id "org.jetbrains.intellij" version "0.1.6"
+}
+
+group 'ru.yole'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'kotlin'
+
+sourceCompatibility = 1.5
+
+repositories {
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.2"
+    compile 'com.github.AdoptOpenJDK:jitwatch:master-SNAPSHOT'
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}

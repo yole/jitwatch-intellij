@@ -1,0 +1,24 @@
+<idea-plugin version="2">
+    <id>ru.yole.jitwatch-intellij</id>
+    <name>JITWatch</name>
+    
+    <vendor url="http://yole.ru">Dmitry Jemerov</vendor>
+    
+    <description><![CDATA[
+        Viewing HotSpot compilation logs in IntelliJ IDEA    
+    ]]></description>
+    
+    <idea-version since-build="145.1"/>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService serviceInterface="ru.yole.jitwatch.JitWatchModelService"
+                        serviceImplementation="ru.yole.jitwatch.JitWatchModelService"/>
+    </extensions>
+
+    <actions>
+        <action class="ru.yole.jitwatch.LoadLogAction" id="JitWatch.LoadLog"
+                text="Load HotSpot Compilation Log...">
+            <add-to-group group-id="AnalyzeMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
