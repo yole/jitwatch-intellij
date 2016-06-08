@@ -4,6 +4,7 @@ import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.*
+import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiTreeUtil
 import org.adoptopenjdk.jitwatch.model.IMetaMember
 
@@ -31,8 +32,8 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
         return true
     }
 
-    override fun findCallToMember(psiFile: PsiFile, offset: Int, calleeMember: IMetaMember): PsiElement? {
-        val statement = PsiTreeUtil.getParentOfType(psiFile.findElementAt(offset), PsiStatement::class.java) ?: return null
+    override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember): PsiElement? {
+        val statement = findStatement(file, offset) ?: return null
         var result: PsiCallExpression? = null
         statement.acceptChildren(object : JavaRecursiveElementVisitor() {
             override fun visitCallExpression(callExpression: PsiCallExpression) {
@@ -45,5 +46,24 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
         })
         return result
     }
+
+    override fun findAllocation(file: PsiFile, offset: Int, jvmName: String): PsiElement? {
+        val expectedClass = ClassUtil.findPsiClassByJVMName(file.manager, jvmName) ?: return null
+        val statement = findStatement(file, offset) ?: return null
+        var result: PsiNewExpression? = null
+        statement.acceptChildren(object : JavaRecursiveElementVisitor() {
+            override fun visitNewExpression(expression: PsiNewExpression) {
+                super.visitNewExpression(expression)
+                val createdClass = expression.resolveConstructor()?.containingClass
+                if (createdClass?.isEquivalentTo(expectedClass) == true) {
+                    result = expression
+                }
+            }
+        })
+        return result
+    }
+
+    private fun findStatement(file: PsiFile, offset: Int) =
+            PsiTreeUtil.getParentOfType(file.findElementAt(offset), PsiStatement::class.java)
 
 }

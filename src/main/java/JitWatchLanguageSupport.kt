@@ -13,6 +13,7 @@ interface JitWatchLanguageSupport<ClassT : PsiElement, MethodT : PsiElement> {
     fun getContainingClass(method: MethodT): ClassT?
     fun matchesSignature(member: IMetaMember, method: MethodT): Boolean
     fun findCallToMember(file: PsiFile, offset:Int, calleeMember: IMetaMember): PsiElement?
+    fun findAllocation(file: PsiFile, offset:Int, jvmName: String): PsiElement?
 
 }
 

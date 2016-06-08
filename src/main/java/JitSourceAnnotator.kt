@@ -15,13 +15,14 @@ import com.intellij.util.containers.isNullOrEmpty
 import org.adoptopenjdk.jitwatch.model.IMetaMember
 import org.adoptopenjdk.jitwatch.model.bytecode.*
 import org.adoptopenjdk.jitwatch.util.ParseUtil
+import java.awt.Color
 
-class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, LineAnnotation>>>() {
+class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, List<LineAnnotation>>>>() {
     override fun collectInformation(file: PsiFile): PsiFile? {
         return file
     }
 
-    override fun doAnnotate(psiFile: PsiFile?): List<Pair<PsiElement, LineAnnotation>>? {
+    override fun doAnnotate(psiFile: PsiFile?): List<Pair<PsiElement, List<LineAnnotation>>>? {
         if (psiFile == null) return null
         val service = JitWatchModelService.getInstance(psiFile.project)
         val languageSupport = LanguageSupport.forLanguage(psiFile.language) ?: return emptyList()
@@ -35,8 +36,8 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
 
     private fun mapBytecodeAnnotationsToSource(psiFile: PsiFile,
                                                classBC: ClassBC,
-                                               bytecodeAnnotations: Map<IMetaMember, BytecodeAnnotations>): List<Pair<PsiElement, LineAnnotation>> {
-        val result = mutableListOf<Pair<PsiElement, LineAnnotation>>()
+                                               bytecodeAnnotations: Map<IMetaMember, BytecodeAnnotations>): List<Pair<PsiElement, List<LineAnnotation>>> {
+        val result = mutableListOf<Pair<PsiElement, List<LineAnnotation>>>()
         val languageSupport = LanguageSupport.forLanguage(psiFile.language) ?: return emptyList()
 
         for (cls in languageSupport.getAllClasses(psiFile)) {
@@ -47,12 +48,16 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
                 for (instruction in memberBytecode.instructions) {
                     val annotationsForBCI = annotations.getAnnotationsForBCI(instruction.offset)
                     if (annotationsForBCI.isNullOrEmpty()) continue
+
+                    val elementToAnnotationsMap = mutableMapOf<PsiElement, MutableList<LineAnnotation>>()
                     for (lineAnnotation in annotationsForBCI) {
                         val sourceElement = mapBytecodeAnnotationToSource(method, member, memberBytecode, instruction, lineAnnotation)
                         if (sourceElement != null) {
-                            result.add(sourceElement to lineAnnotation)
+                            val list = elementToAnnotationsMap.getOrPut(sourceElement) { mutableListOf<LineAnnotation>() }
+                            list.add(lineAnnotation)
                         }
                     }
+                    elementToAnnotationsMap.mapTo(result) { it.key to it.value }
                 }
             }
         }
@@ -64,28 +69,41 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
                                               member: IMetaMember,
                                               memberBytecode: MemberBytecode,
                                               instruction: BytecodeInstruction,
-                                              annotation: LineAnnotation): PsiElement? {
+                                              lineAnnotation: LineAnnotation): PsiElement? {
         val languageSupport = LanguageSupport.forLanguage(method.language) ?: return null
 
         val sourceLine = memberBytecode.lineTable.findSourceLineForBytecodeOffset(instruction.offset)
         if (sourceLine == -1) return null
 
         val psiFile = method.containingFile ?: return null
-        val document = PsiDocumentManager.getInstance(method.project).getDocument(psiFile) ?: return null
-        var lineStartOffset = document.getLineStartOffset(sourceLine - 1)
-        while (lineStartOffset < document.textLength && psiFile.findElementAt(lineStartOffset) is PsiWhiteSpace) {
-            lineStartOffset++
-        }
+        val lineStartOffset = psiFile.findLineStart(sourceLine) ?: return null
 
-        if (annotation.type == BCAnnotationType.INLINE_SUCCESS || annotation.type == BCAnnotationType.INLINE_FAIL) {
-            val model = JitWatchModelService.getInstance(method.project).model
-            val calleeMember = ParseUtil.getMemberFromBytecodeComment(model, member, instruction) ?: return null
-            return languageSupport.findCallToMember(psiFile, lineStartOffset, calleeMember)
+        return when (lineAnnotation.type) {
+            BCAnnotationType.INLINE_SUCCESS, BCAnnotationType.INLINE_FAIL -> {
+                val model = JitWatchModelService.getInstance(method.project).model
+                val calleeMember = ParseUtil.getMemberFromBytecodeComment(model, member, instruction) ?: return null
+                languageSupport.findCallToMember(psiFile, lineStartOffset, calleeMember)
+            }
+
+            BCAnnotationType.ELIMINATED_ALLOCATION -> {
+                val comment = instruction.comment.removePrefix("// class ")
+                languageSupport.findAllocation(psiFile, lineStartOffset, comment)
+            }
+
+            else -> null
         }
-        return null
     }
 
-    override fun apply(file: PsiFile, annotationResult: List<Pair<PsiElement, LineAnnotation>>?, holder: AnnotationHolder) {
+    private fun PsiFile.findLineStart(sourceLine: Int): Int? {
+        val document = PsiDocumentManager.getInstance(project).getDocument(this) ?: return null
+        var lineStartOffset = document.getLineStartOffset(sourceLine - 1)
+        while (lineStartOffset < document.textLength && findElementAt(lineStartOffset) is PsiWhiteSpace) {
+            lineStartOffset++
+        }
+        return lineStartOffset
+    }
+
+    override fun apply(file: PsiFile, annotationResult: List<Pair<PsiElement, List<LineAnnotation>>>?, holder: AnnotationHolder) {
         if (annotationResult == null) return
 
         for (pair in annotationResult) {
@@ -93,15 +111,19 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
         }
     }
 
-    private fun applyAnnotation(element: PsiElement, lineAnnotation: LineAnnotation, holder: AnnotationHolder) {
-        when (lineAnnotation.type) {
-            BCAnnotationType.INLINE_SUCCESS -> holder.createInfoAnnotation(element, lineAnnotation.annotation)
-                .enforcedTextAttributes = underline(JBColor.GREEN)
-
-            BCAnnotationType.INLINE_FAIL -> holder.createInfoAnnotation(element, lineAnnotation.annotation)
-                    .enforcedTextAttributes = underline(JBColor.RED)
+    private fun applyAnnotation(element: PsiElement, lineAnnotations: List<LineAnnotation>, holder: AnnotationHolder) {
+        val annotation = holder.createInfoAnnotation(element, lineAnnotations.joinToString(separator = "\n") { it.annotation })
+        var color: Color? = null
+        if (lineAnnotations.any { it.type == BCAnnotationType.INLINE_FAIL }) {
+            color = JBColor.RED
+        }
+        else if (lineAnnotations.any { it.type == BCAnnotationType.INLINE_SUCCESS || it.type == BCAnnotationType.ELIMINATED_ALLOCATION }) {
+            color = JBColor.GREEN
+        }
+        if (color != null) {
+            annotation.enforcedTextAttributes = underline(color)
         }
     }
 
-    private fun underline(color: JBColor?) = TextAttributes(null, null, color, EffectType.LINE_UNDERSCORE, 0)
+    private fun underline(color: Color) = TextAttributes(null, null, color, EffectType.LINE_UNDERSCORE, 0)
 }
