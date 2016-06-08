@@ -27,6 +27,7 @@ repositories {
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.2"
+    compile "org.jetbrains.kotlin:kotlin-reflect:1.0.2"
     compile 'com.github.AdoptOpenJDK:jitwatch:master-SNAPSHOT'
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
