@@ -28,7 +28,11 @@ class JitLineMarkerProvider : LineMarkerProvider {
     }
 
     private fun metaMemberMarker(method: PsiMethod, metaMember: IMetaMember): LineMarkerInfo<*> {
-        return LineMarkerInfo(method, method.nameRange(), AllIcons.Actions.Compile, Pass.UPDATE_ALL,
+        val decompiles = metaMember.compiledAttributes["decompiles"] ?: "0"
+        val icon = if (decompiles.toInt() > 0) AllIcons.Actions.ForceRefresh else AllIcons.Actions.Compile
+        return LineMarkerInfo(method, method.nameRange(),
+                icon,
+                Pass.UPDATE_ALL,
                 { method -> buildCompiledTooltip(metaMember) }, null, GutterIconRenderer.Alignment.CENTER)
     }
 
@@ -37,7 +41,12 @@ class JitLineMarkerProvider : LineMarkerProvider {
         val compileMillis = metaMember.compiledAttributes["compileMillis"] ?: "?"
         val bytecodeSize = metaMember.compiledAttributes["bytes"] ?: "?"
         val nativeSize = metaMember.compiledAttributes["nmsize"] ?: "?"
-        return "Compiled with $compiler in $compileMillis ms, bytecode size $bytecodeSize, native size $nativeSize"
+        val decompiles = metaMember.compiledAttributes["decompiles"]
+        var message = "Compiled with $compiler in $compileMillis ms, bytecode size $bytecodeSize, native size $nativeSize"
+        if (decompiles != null) {
+            message += ". Decompiled $decompiles times"
+        }
+        return message
     }
 
     override fun collectSlowLineMarkers(elements: MutableList<PsiElement>, result: MutableCollection<LineMarkerInfo<PsiElement>>) {
