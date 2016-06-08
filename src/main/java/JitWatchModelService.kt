@@ -1,18 +1,21 @@
 package ru.yole.jitwatch
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiClass
 import org.adoptopenjdk.jitwatch.core.HotSpotLogParser
 import org.adoptopenjdk.jitwatch.core.IJITListener
 import org.adoptopenjdk.jitwatch.core.ILogParseErrorListener
 import org.adoptopenjdk.jitwatch.core.JITWatchConfig
 import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel
 import org.adoptopenjdk.jitwatch.model.JITEvent
+import org.adoptopenjdk.jitwatch.model.MetaClass
 import java.io.File
 import javax.swing.SwingUtilities
 
@@ -58,6 +61,14 @@ class JitWatchModelService(private val project: Project) {
 
     private fun modelUpdated() {
         DaemonCodeAnalyzer.getInstance(project).restart()
+    }
+
+    fun getMetaClass(cls: PsiClass?): MetaClass? {
+        if (cls == null) return null
+        return model?.let {
+            val classQName = JVMNameUtil.getClassVMName(cls)
+            it.packageManager. getMetaClass(classQName)
+        }
     }
 
     companion object {

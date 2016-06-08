@@ -14,9 +14,8 @@ import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
 class JitLineMarkerProvider : LineMarkerProvider {
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         val method = element as? PsiMethod ?: return null
-        val model = JitWatchModelService.getInstance(element.project).model ?: return null
-        val classQName = JVMNameUtil.getClassVMName(method.containingClass)
-        val metaClass = model.packageManager.getMetaClass(classQName) ?: return null
+        val modelService = JitWatchModelService.getInstance(element.project)
+        val metaClass = modelService.getMetaClass(method.containingClass) ?: return null
         val memberSignature = method.memberSignature()
         val metaMember = metaClass.getMemberForSignature(memberSignature) ?: return notCompiledMarker(method)
         return if (metaMember.isCompiled) metaMemberMarker(element, metaMember) else notCompiledMarker(method)
