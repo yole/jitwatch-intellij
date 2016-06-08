@@ -41,6 +41,10 @@ class BytecodeTextBuilder(val metaClass: MetaClass) {
         }
     }
 
+    fun findLine(member: IMetaMember): Int? {
+        return memberIndex[member]?.startLine
+    }
+
     fun findLine(member: IMetaMember, bytecodeOffset: Int): Int? {
         val instruction = member.memberBytecode.instructions.firstOrNull { it.offset >= bytecodeOffset } ?: return null
         return memberIndex[member]?.instructionToLineMap?.get(instruction)

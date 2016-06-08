@@ -5,6 +5,7 @@ import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.editor.markup.GutterIconRenderer
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import org.adoptopenjdk.jitwatch.model.IMetaMember
@@ -29,7 +30,13 @@ class JitLineMarkerProvider : LineMarkerProvider {
         return LineMarkerInfo(method, method.nameRange(),
                 icon,
                 Pass.UPDATE_ALL,
-                { method -> buildCompiledTooltip(metaMember) }, null, GutterIconRenderer.Alignment.CENTER)
+                { method: PsiMethod -> buildCompiledTooltip(metaMember) },
+                { e, elt ->
+                    ToolWindowManager.getInstance(method.project).getToolWindow("JitWatch").activate {
+                        JitToolWindow.getInstance(method.project)?.navigateToMember(elt)
+                    }
+                },
+                GutterIconRenderer.Alignment.CENTER)
     }
 
     private fun buildCompiledTooltip(metaMember: IMetaMember): String {

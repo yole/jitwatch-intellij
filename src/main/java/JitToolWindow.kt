@@ -23,6 +23,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.ui.JBColor
@@ -74,7 +76,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
         setupUI()
         val fileEditorManager = FileEditorManager.getInstance(project)
-        updateContent(fileEditorManager.selectedFiles.firstOrNull(), fileEditorManager.selectedEditors.firstOrNull())
+        updateContent(fileEditorManager.selectedFiles.firstOrNull(), fileEditorManager.selectedEditors.firstOrNull(), true)
     }
 
     private fun setupUI() {
@@ -82,7 +84,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         add(bytecodeEditor.component, EDITOR_CARD)
     }
 
-    private fun updateContent(file: VirtualFile?, fileEditor: FileEditor?) {
+    private fun updateContent(file: VirtualFile?, fileEditor: FileEditor?, syncCaret: Boolean = false) {
         activeSourceEditor = (fileEditor as? TextEditor)?.editor
             ?: return showMessage("Please open a text editor")
 
@@ -100,6 +102,9 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         modelService.loadBytecodeAsync(psiClass) { classBC, annotationsMap ->
             if (classBC != null && annotationsMap != null) {
                 showBytecode(modelService.getMetaClass(psiClass)!!, annotationsMap)
+                if (syncCaret) {
+                    syncBytecodeToEditor(activeSourceEditor!!.caretModel.logicalPosition)
+                }
             }
             else {
                 showMessage("Couldn't load bytecode for selected class")
@@ -186,11 +191,28 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         val metaMember = modelService.getMetaMember(methodAtCaret) ?: return
         val lineTableEntry = metaMember.memberBytecode.lineTable.getEntryForSourceLine(caretPosition.line + 1) ?: return
         val bytecodeLine = bytecodeTextBuilder?.findLine(metaMember, lineTableEntry.bytecodeOffset) ?: return
+        moveCaretInBytecode(bytecodeLine)
+    }
+
+    private fun moveCaretInBytecode(bytecodeLine: Int) {
         bytecodeEditor.caretModel.moveToLogicalPosition(LogicalPosition(bytecodeLine, 0))
         bytecodeEditor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
     }
 
+    fun navigateToMember(member: PsiElement) {
+        val metaMember = modelService.getMetaMember(member) ?: return
+        val bytecodeLine = bytecodeTextBuilder?.findLine(metaMember) ?: return
+        moveCaretInBytecode(bytecodeLine)
+    }
+
     override fun dispose() {
+    }
+
+    companion object {
+        fun getInstance(project: Project): JitToolWindow? {
+            val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("JitWatch") ?: return null
+            return toolWindow.contentManager.getContent(0)?.component as? JitToolWindow
+        }
     }
 }
 
