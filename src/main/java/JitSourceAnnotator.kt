@@ -11,7 +11,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.ui.JBColor
-import com.intellij.util.containers.isNullOrEmpty
 import org.adoptopenjdk.jitwatch.model.IMetaMember
 import org.adoptopenjdk.jitwatch.model.bytecode.*
 import org.adoptopenjdk.jitwatch.util.ParseUtil
@@ -25,37 +24,20 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
     override fun doAnnotate(psiFile: PsiFile?): List<Pair<PsiElement, LineAnnotation>>? {
         if (psiFile == null) return null
         val service = JitWatchModelService.getInstance(psiFile.project)
-        val languageSupport = LanguageSupport.forLanguage(psiFile.language) ?: return emptyList()
-        val cls = languageSupport.getAllClasses(psiFile).firstOrNull() ?: return emptyList()
-
-        val (classBC, bytecodeAnnotations) = service.loadBytecode(cls) ?: return null
+        service.loadBytecode(psiFile)
         return ApplicationManager.getApplication().runReadAction(Computable {
-            mapBytecodeAnnotationsToSource(psiFile, classBC, bytecodeAnnotations)
+            mapBytecodeAnnotationsToSource(psiFile)
         })
     }
 
-    private fun mapBytecodeAnnotationsToSource(psiFile: PsiFile,
-                                               classBC: ClassBC,
-                                               bytecodeAnnotations: Map<IMetaMember, BytecodeAnnotations>): List<Pair<PsiElement, LineAnnotation>> {
+    private fun mapBytecodeAnnotationsToSource(psiFile: PsiFile): List<Pair<PsiElement, LineAnnotation>> {
         val result = mutableListOf<Pair<PsiElement, LineAnnotation>>()
-        val languageSupport = LanguageSupport.forLanguage(psiFile.language) ?: return emptyList()
+        val modelService = JitWatchModelService.getInstance(psiFile.project)
 
-        for (cls in languageSupport.getAllClasses(psiFile)) {
-            for (method in languageSupport.getAllMethods(cls)) {
-                val member = bytecodeAnnotations.keys.find { languageSupport.matchesSignature(it, method) } ?: continue
-                val annotations = bytecodeAnnotations[member] ?: continue
-                val memberBytecode = classBC.getMemberBytecode(member) ?: continue
-                for (instruction in memberBytecode.instructions) {
-                    val annotationsForBCI = annotations.getAnnotationsForBCI(instruction.offset)
-                    if (annotationsForBCI.isNullOrEmpty()) continue
-
-                    for (lineAnnotation in annotationsForBCI) {
-                        val sourceElement = mapBytecodeAnnotationToSource(method, member, memberBytecode, instruction, lineAnnotation)
-                        if (sourceElement != null) {
-                            result.add(sourceElement to lineAnnotation)
-                        }
-                    }
-                }
+        modelService.processBytecodeAnnotations(psiFile) { method, member, memberBytecode, instruction, lineAnnotations ->
+            for (lineAnnotation in lineAnnotations) {
+                val sourceElement = mapBytecodeAnnotationToSource(method, member, memberBytecode, instruction, lineAnnotation) ?: continue
+                result.add(sourceElement to lineAnnotation)
             }
         }
 
@@ -67,7 +49,7 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
                                               memberBytecode: MemberBytecode,
                                               instruction: BytecodeInstruction,
                                               lineAnnotation: LineAnnotation): PsiElement? {
-        val languageSupport = LanguageSupport.forLanguage(method.language) ?: return null
+        val languageSupport = LanguageSupport.forLanguage(method.language)
 
         val sourceLine = memberBytecode.lineTable.findSourceLineForBytecodeOffset(instruction.offset)
         if (sourceLine == -1) return null

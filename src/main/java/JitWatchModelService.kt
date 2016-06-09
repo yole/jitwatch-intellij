@@ -3,6 +3,7 @@ package ru.yole.jitwatch
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ServiceManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
@@ -12,6 +13,8 @@ import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.util.containers.isNullOrEmpty
 import org.adoptopenjdk.jitwatch.core.HotSpotLogParser
 import org.adoptopenjdk.jitwatch.core.IJITListener
 import org.adoptopenjdk.jitwatch.core.ILogParseErrorListener
@@ -20,9 +23,7 @@ import org.adoptopenjdk.jitwatch.model.IMetaMember
 import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel
 import org.adoptopenjdk.jitwatch.model.JITEvent
 import org.adoptopenjdk.jitwatch.model.MetaClass
-import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeAnnotationBuilder
-import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeAnnotations
-import org.adoptopenjdk.jitwatch.model.bytecode.ClassBC
+import org.adoptopenjdk.jitwatch.model.bytecode.*
 import java.io.File
 import javax.swing.SwingUtilities
 
@@ -86,35 +87,69 @@ class JitWatchModelService(private val project: Project) {
         return metaClass.metaMembers.find { languageSupport.matchesSignature(it, method) }
     }
 
-    fun loadBytecodeAsync(cls: PsiElement, callback: (ClassBC?, Map<IMetaMember, BytecodeAnnotations>?) -> Unit) {
+    fun loadBytecodeAsync(file: PsiFile, callback: () -> Unit) {
         ApplicationManager.getApplication().executeOnPooledThread {
-            val bytecodeResult = loadBytecode(cls)
+            loadBytecode(file)
 
             SwingUtilities.invokeLater {
-                callback(bytecodeResult?.first, bytecodeResult?.second)
+                callback()
             }
         }
     }
 
-    fun loadBytecode(cls: PsiElement): Pair<ClassBC, Map<IMetaMember, BytecodeAnnotations>>? {
-        val module = ModuleUtil.findModuleForPsiElement(cls) ?: return null
+    fun loadBytecode(file: PsiFile) {
+        val module = ModuleUtil.findModuleForPsiElement(file) ?: return
         val outputRoots = CompilerModuleExtension.getInstance(module)!!.getOutputRoots(true)
                 .map { it.canonicalPath }
-        val metaClass = ApplicationManager.getApplication().runReadAction(Computable { getMetaClass(cls) }) ?: return null
 
-        val classBC = metaClass.getClassBytecode(JitWatchModelService.getInstance(project).model, outputRoots)
+        val annotationsMap = hashMapOf<IMetaMember, BytecodeAnnotations>()
+        val allClasses = LanguageSupport.forElement(file).getAllClasses(file)
+        for (cls in allClasses) {
+            val metaClass = ApplicationManager.getApplication().runReadAction(Computable { getMetaClass(cls) }) ?: continue
+            metaClass.getClassBytecode(JitWatchModelService.getInstance(project).model, outputRoots)
+            buildAllBytecodeAnnotations(metaClass, annotationsMap)
+        }
+        bytecodeAnnotations[file.virtualFile] = annotationsMap
+    }
 
-        return classBC to bytecodeAnnotations.getOrPut(cls.containingFile.virtualFile) {
-            buildAllBytecodeAnnotations(metaClass)
+    private fun buildAllBytecodeAnnotations(metaClass: MetaClass, target: MutableMap<IMetaMember, BytecodeAnnotations>) {
+        for (metaMember in metaClass.metaMembers) {
+            val annotations = try {
+                BytecodeAnnotationBuilder().buildBytecodeAnnotations(metaMember, model)
+            } catch (e: Exception) {
+                LOG.error("Failed to build annotations", e)
+                continue
+            }
+            target[metaMember] = annotations
         }
     }
 
-    private fun buildAllBytecodeAnnotations(metaClass: MetaClass): Map<IMetaMember, BytecodeAnnotations> =
-            metaClass.metaMembers.associate {
-                it to BytecodeAnnotationBuilder().buildBytecodeAnnotations(it, model)
+    fun processBytecodeAnnotations(psiFile: PsiFile, callback: (method: PsiElement,
+                                                                member: IMetaMember,
+                                                                memberBytecode: MemberBytecode,
+                                                                instruction: BytecodeInstruction,
+                                                                annotations: List<LineAnnotation>) -> Unit) {
+        val languageSupport = LanguageSupport.forLanguage(psiFile.language)
+        val annotationsForFile = bytecodeAnnotations[psiFile.virtualFile] ?: return
+        for (cls in languageSupport.getAllClasses(psiFile)) {
+            val classBC = getMetaClass(cls)?.classBytecode ?: continue
+            for (method in languageSupport.getAllMethods(cls)) {
+                val member = annotationsForFile.keys.find { languageSupport.matchesSignature(it, method) } ?: continue
+                val annotations = annotationsForFile[member] ?: continue
+                val memberBytecode = classBC.getMemberBytecode(member) ?: continue
+                for (instruction in memberBytecode.instructions) {
+                    val annotationsForBCI = annotations.getAnnotationsForBCI(instruction.offset)
+                    if (annotationsForBCI.isNullOrEmpty()) continue
+
+                    callback(method, member, memberBytecode, instruction, annotationsForBCI)
+                }
             }
+        }
+    }
 
     companion object {
         fun getInstance(project: Project) = ServiceManager.getService(project, JitWatchModelService::class.java)
+
+        val LOG = Logger.getInstance(JitWatchModelService::class.java)
     }
 }

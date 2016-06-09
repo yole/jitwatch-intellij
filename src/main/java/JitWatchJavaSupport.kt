@@ -11,7 +11,9 @@ import org.adoptopenjdk.jitwatch.model.IMetaMember
 
 class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     override fun getAllClasses(file: PsiFile): List<PsiClass> =
-        ApplicationManager.getApplication().runReadAction(Computable { (file as? PsiJavaFile)?.classes?.toList().orEmpty() })
+        ApplicationManager.getApplication().runReadAction(Computable {
+            PsiTreeUtil.collectElementsOfType(file, PsiClass::class.java).toList()
+        })
 
     override fun getAllMethods(cls: PsiClass): List<PsiMethod> = (cls.methods + cls.constructors).toList()
 

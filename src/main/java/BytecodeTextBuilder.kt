@@ -5,7 +5,7 @@ import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeInstruction
 import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode
 
-class BytecodeTextBuilder(val metaClass: MetaClass) {
+class BytecodeTextBuilder() {
     private class MemberBytecodeMap(val startLine: Int) {
         val instructionToLineMap = mutableMapOf<BytecodeInstruction, Int>()
     }
@@ -14,12 +14,19 @@ class BytecodeTextBuilder(val metaClass: MetaClass) {
     private var currentLine = 0
     private val memberIndex = mutableMapOf<IMetaMember, MemberBytecodeMap>()
 
-    init {
+    fun appendClass(metaClass: MetaClass) {
         for (member in metaClass.metaMembers) {
             val bytecodeMap = MemberBytecodeMap(currentLine)
             memberIndex[member] = bytecodeMap
-            appendLine(member.memberBytecode.memberSignatureParts.toStringSingleLine())
-            appendBytecode(member.memberBytecode, bytecodeMap)
+
+            val memberBytecode = member.memberBytecode
+            appendLine(member.toStringUnqualifiedMethodName(false))
+            if (memberBytecode == null) {
+                appendLine("NO BYTECODE FOUND")
+            }
+            else {
+                appendBytecode(memberBytecode, bytecodeMap)
+            }
         }
     }
 

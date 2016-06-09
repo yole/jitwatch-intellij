@@ -96,18 +96,15 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         val languageSupport = LanguageSupport.forLanguage(activeSourceFile!!.language)
             ?: return showMessage("Please select a file in a supported language")
 
-        val psiClass = languageSupport.getAllClasses(activeSourceFile!!).firstOrNull()
-            ?: return showMessage("Please select a Java file that contains classes")
+        if (languageSupport.getAllClasses(activeSourceFile!!).isEmpty())
+            return showMessage("Please select a Java file that contains classes")
 
-        modelService.loadBytecodeAsync(psiClass) { classBC, annotationsMap ->
-            if (classBC != null && annotationsMap != null) {
-                showBytecode(modelService.getMetaClass(psiClass)!!, annotationsMap)
-                if (syncCaret) {
-                    syncBytecodeToEditor(activeSourceEditor!!.caretModel.logicalPosition)
-                }
-            }
-            else {
-                showMessage("Couldn't load bytecode for selected class")
+        val sourceFile = activeSourceFile!!
+        modelService.loadBytecodeAsync(sourceFile) { ->
+            if (activeSourceFile != sourceFile) return@loadBytecodeAsync
+            showBytecode()
+            if (syncCaret) {
+                syncBytecodeToEditor(activeSourceEditor!!.caretModel.logicalPosition)
             }
         }
     }
@@ -117,35 +114,39 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         cardLayout.show(this, MESSAGE_CARD)
     }
 
-    private fun showBytecode(metaClass: MetaClass, annotationsMap: Map<IMetaMember, BytecodeAnnotations>) {
+    private fun showBytecode() {
         cardLayout.show(this, EDITOR_CARD)
 
-        bytecodeTextBuilder = BytecodeTextBuilder(metaClass)
+        bytecodeTextBuilder = BytecodeTextBuilder()
+
+        val psiFile = activeSourceFile!!
+        val classes = LanguageSupport.forElement(psiFile).getAllClasses(psiFile)
+        val metaClasses = mutableListOf<MetaClass>()
+        for (cls in classes) {
+            val metaClass = modelService.getMetaClass(cls) ?: continue
+            metaClasses.add(metaClass)
+            bytecodeTextBuilder!!.appendClass(metaClass)
+        }
+
         object : WriteCommandAction<Unit>(project) {
             override fun run(result: Result<Unit>) {
                 bytecodeDocument.replaceString(0, bytecodeDocument.textLength, bytecodeTextBuilder!!.text)
             }
         }.execute()
 
-        renderBytecodeAnnotations(metaClass, annotationsMap)
+        renderBytecodeAnnotations(psiFile)
     }
 
-    private fun renderBytecodeAnnotations(metaClass: MetaClass,
-                                          annotationsMap: Map<IMetaMember, BytecodeAnnotations>) {
+    private fun renderBytecodeAnnotations(psiFile: PsiFile) {
         val markupModel = DocumentMarkupModel.forDocument(bytecodeDocument, project, true)
         markupModel.removeAllHighlighters()
 
-        for (member in metaClass.metaMembers) {
-            val annotations = annotationsMap[member] ?: continue
-            for (instruction in member.memberBytecode.instructions) {
-                val annotationsForBCI = annotations.getAnnotationsForBCI(instruction.offset)
-                if (annotationsForBCI.isNullOrEmpty()) continue
-                val line = bytecodeTextBuilder!!.findLine(member, instruction.offset) ?: continue
-                val color = getColorForBytecodeAnnotation(annotationsForBCI.first().type)
-                highlightBytecodeLine(line, color,
-                        annotationsForBCI.joinToString(separator = "\n") { it.annotation },
-                        markupModel)
-            }
+        modelService.processBytecodeAnnotations(psiFile) { method, member, memberBytecode, instruction, annotationsForBCI ->
+            val line = bytecodeTextBuilder!!.findLine(member, instruction.offset) ?: return@processBytecodeAnnotations
+            val color = getColorForBytecodeAnnotation(annotationsForBCI.first().type)
+            highlightBytecodeLine(line, color,
+                    annotationsForBCI.joinToString(separator = "\n") { it.annotation },
+                    markupModel)
         }
     }
 
