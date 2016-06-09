@@ -2,7 +2,6 @@ package ru.yole.jitwatch
 
 import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.*
 import com.intellij.psi.util.ClassUtil
@@ -60,7 +59,7 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
 
     override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember, sameLineCallIndex: Int): PsiElement? {
         val statement = findStatement(file, offset) ?: return null
-        var result: PsiCallExpression? = null
+        var result: PsiElement? = null
         var curIndex = 0
         statement.acceptChildren(object : JavaRecursiveElementVisitor() {
             override fun visitCallExpression(callExpression: PsiCallExpression) {
@@ -68,7 +67,11 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
                 val method = callExpression.resolveMethod()
                 if (method != null && matchesSignature(calleeMember, method)) {
                     if (curIndex == sameLineCallIndex) {
-                        result = callExpression
+                        result = when (callExpression) {
+                            is PsiMethodCallExpression -> callExpression.methodExpression
+                            is PsiNewExpression -> callExpression.classReference
+                            else -> callExpression
+                        }
                     }
                     curIndex++
                 }
@@ -80,13 +83,13 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     override fun findAllocation(file: PsiFile, offset: Int, jvmName: String): PsiElement? {
         val expectedClass = ClassUtil.findPsiClassByJVMName(file.manager, jvmName) ?: return null
         val statement = findStatement(file, offset) ?: return null
-        var result: PsiNewExpression? = null
+        var result: PsiElement? = null
         statement.acceptChildren(object : JavaRecursiveElementVisitor() {
             override fun visitNewExpression(expression: PsiNewExpression) {
                 super.visitNewExpression(expression)
                 val createdClass = expression.resolveConstructor()?.containingClass
                 if (createdClass?.isEquivalentTo(expectedClass) == true) {
-                    result = expression
+                    result = expression.node.findChildByType(JavaTokenType.NEW_KEYWORD)?.psi ?: expression
                 }
             }
         })
