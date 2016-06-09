@@ -256,6 +256,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
     }
 
     override fun dispose() {
+        EditorFactory.getInstance().releaseEditor(bytecodeEditor)
     }
 
     companion object {
