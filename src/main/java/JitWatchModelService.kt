@@ -84,7 +84,7 @@ class JitWatchModelService(private val project: Project) {
     fun getMetaMember(method: PsiElement): IMetaMember? {
         val languageSupport = LanguageSupport.forLanguage(method.language) ?: return null
         val metaClass = getMetaClass(languageSupport.getContainingClass(method)) ?: return null
-        return metaClass.metaMembers.find { languageSupport.matchesSignature(it, method) }
+        return metaClass.metaMembers.find { method.matchesSignature(it) }
     }
 
     fun loadBytecodeAsync(file: PsiFile, callback: () -> Unit) {
@@ -135,7 +135,7 @@ class JitWatchModelService(private val project: Project) {
             val classBC = metaClass?.classBytecode ?: continue
             val classAnnotations = bytecodeAnnotations[metaClass] ?: continue
             for (method in languageSupport.getAllMethods(cls)) {
-                val member = classAnnotations.keys.find { languageSupport.matchesSignature(it, method) } ?: continue
+                val member = classAnnotations.keys.find { method.matchesSignature(it) } ?: continue
                 val annotations = classAnnotations[member] ?: continue
                 val memberBytecode = classBC.getMemberBytecode(member) ?: continue
                 for (instruction in memberBytecode.instructions) {

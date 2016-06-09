@@ -7,7 +7,7 @@ import com.intellij.psi.*
 import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.TypeConversionUtil
-import org.adoptopenjdk.jitwatch.model.IMetaMember
+import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
 
 class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     override fun getAllClasses(file: PsiFile): List<PsiClass> =
@@ -24,20 +24,20 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
 
     override fun getContainingClass(method: PsiMethod): PsiClass? = method.containingClass
 
-    override fun matchesSignature(member: IMetaMember, method: PsiMethod): Boolean {
+    override fun matchesSignature(method: PsiMethod, memberName: String, paramTypeNames: List<String>, returnTypeName: String): Boolean {
         val psiMethodName = if (method.isConstructor)
             JVMNameUtil.getClassVMName(method.containingClass)?.substringAfterLast('.') ?: method.name
         else
             method.name
-        if (member.memberName != psiMethodName) return false
+        if (memberName != psiMethodName) return false
 
-        if (member.paramTypeNames.size != method.parameterList.parametersCount) return false
-        val paramTypes = member.paramTypeNames zip method.parameterList.parameters.map { it.type.jvmText() }
+        if (paramTypeNames.size != method.parameterList.parametersCount) return false
+        val paramTypes = paramTypeNames zip method.parameterList.parameters.map { it.type.jvmText() }
         if (paramTypes.any { it.first != it.second})
             return false
 
         val psiMethodReturnTypeName = if (method.isConstructor) "void" else method.returnType?.jvmText() ?: ""
-        if (member.returnTypeName != psiMethodReturnTypeName)
+        if (returnTypeName != psiMethodReturnTypeName)
             return false
 
         return true
@@ -57,7 +57,7 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
         return erasedType.canonicalText
     }
 
-    override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember, sameLineCallIndex: Int): PsiElement? {
+    override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: MemberSignatureParts, sameLineCallIndex: Int): PsiElement? {
         val statement = findStatement(file, offset) ?: return null
         var result: PsiElement? = null
         var curIndex = 0
@@ -65,7 +65,7 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
             override fun visitCallExpression(callExpression: PsiCallExpression) {
                 super.visitCallExpression(callExpression)
                 val method = callExpression.resolveMethod()
-                if (method != null && matchesSignature(calleeMember, method)) {
+                if (method != null && matchesSignature(method, calleeMember)) {
                     if (curIndex == sameLineCallIndex) {
                         result = when (callExpression) {
                             is PsiMethodCallExpression -> callExpression.methodExpression

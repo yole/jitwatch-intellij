@@ -3,6 +3,7 @@ package ru.yole.jitwatch
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.ExternalAnnotator
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.markup.EffectType
 import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.util.Computable
@@ -12,7 +13,11 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.ui.JBColor
 import org.adoptopenjdk.jitwatch.model.IMetaMember
-import org.adoptopenjdk.jitwatch.model.bytecode.*
+import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
+import org.adoptopenjdk.jitwatch.model.bytecode.BCAnnotationType
+import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeInstruction
+import org.adoptopenjdk.jitwatch.model.bytecode.LineAnnotation
+import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode
 import org.adoptopenjdk.jitwatch.util.ParseUtil
 import java.awt.Color
 
@@ -59,9 +64,12 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
 
         return when (lineAnnotation.type) {
             BCAnnotationType.INLINE_SUCCESS, BCAnnotationType.INLINE_FAIL -> {
-                val model = JitWatchModelService.getInstance(method.project).model
                 val index = findSameLineCallIndex(memberBytecode, sourceLine, instruction)
-                val calleeMember = ParseUtil.getMemberFromBytecodeComment(model, member, instruction) ?: return null
+                val calleeMember = getMemberSignatureFromBytecodeComment(member, instruction)
+                if (calleeMember == null) {
+                    LOG.info("Can't find callee by comment: " + instruction.comment)
+                    return null
+                }
                 languageSupport.findCallToMember(psiFile, lineStartOffset, calleeMember, index)
             }
 
@@ -72,6 +80,18 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
 
             else -> null
         }
+    }
+
+    private fun getMemberSignatureFromBytecodeComment(currentMember: IMetaMember,
+                                                      instruction: BytecodeInstruction): MemberSignatureParts? {
+        var comment: String? = instruction.commentWithMemberPrefixStripped ?: return null
+
+        if (ParseUtil.bytecodeMethodCommentHasNoClassPrefix(comment)) {
+            val currentClass = currentMember.metaClass.fullyQualifiedName.replace('.', '/')
+            comment = currentClass + "." + comment
+        }
+
+        return MemberSignatureParts.fromBytecodeComment(comment)
     }
 
     private fun findSameLineCallIndex(memberBytecode: MemberBytecode,
@@ -123,4 +143,8 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
     }
 
     private fun underline(color: Color) = TextAttributes(null, null, color, EffectType.LINE_UNDERSCORE, 0)
+
+    companion object {
+        val LOG = Logger.getInstance(JitSourceAnnotator::class.java)
+    }
 }
