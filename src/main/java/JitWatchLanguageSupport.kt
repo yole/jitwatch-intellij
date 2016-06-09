@@ -1,7 +1,7 @@
 package ru.yole.jitwatch
 
-import com.intellij.lang.Language
 import com.intellij.lang.LanguageExtension
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import org.adoptopenjdk.jitwatch.model.IMetaMember
@@ -10,7 +10,9 @@ import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
 interface JitWatchLanguageSupport<ClassT : PsiElement, MethodT : PsiElement> {
     fun getAllClasses(file: PsiFile): List<ClassT>
     fun getAllMethods(cls: ClassT): List<MethodT>
+    fun isMethod(element: PsiElement): Boolean
     fun findMethodAtOffset(file: PsiFile, offset: Int): MethodT?
+    fun getNameRange(element: PsiElement): TextRange
     fun getClassVMName(cls: ClassT): String?
     fun getContainingClass(method: MethodT): ClassT?
     fun matchesSignature(method: MethodT, memberName: String, paramTypeNames: List<String>, returnTypeName: String): Boolean
@@ -21,7 +23,9 @@ interface JitWatchLanguageSupport<ClassT : PsiElement, MethodT : PsiElement> {
 object DefaultJitLanguageSupport : JitWatchLanguageSupport<PsiElement, PsiElement> {
     override fun getAllClasses(file: PsiFile) = emptyList<PsiElement>()
     override fun getAllMethods(cls: PsiElement) = emptyList<PsiElement>()
+    override fun isMethod(element: PsiElement) = false
     override fun findMethodAtOffset(file: PsiFile, offset: Int) = null
+    override fun getNameRange(element: PsiElement) = element.textRange
     override fun getClassVMName(cls: PsiElement) = null
     override fun getContainingClass(method: PsiElement) = null
     override fun matchesSignature(method: PsiElement, memberName: String, paramTypeNames: List<String>, returnTypeName: String) = false

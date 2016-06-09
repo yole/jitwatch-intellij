@@ -3,6 +3,7 @@ package ru.yole.jitwatch
 import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Computable
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiTreeUtil
@@ -17,8 +18,15 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
 
     override fun getAllMethods(cls: PsiClass): List<PsiMethod> = (cls.methods + cls.constructors).toList()
 
+    override fun isMethod(element: PsiElement): Boolean = element is PsiMethod
+
     override fun findMethodAtOffset(file: PsiFile, offset: Int): PsiMethod? =
         PsiTreeUtil.getParentOfType(file.findElementAt(offset), PsiMethod::class.java)
+
+    override fun getNameRange(element: PsiElement): TextRange = when(element) {
+        is PsiNameIdentifierOwner -> element.nameIdentifier?.textRange ?: element.textRange
+        else -> element.textRange
+    }
 
     override fun getClassVMName(cls: PsiClass): String?  = JVMNameUtil.getClassVMName(cls)
 

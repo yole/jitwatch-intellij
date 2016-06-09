@@ -112,7 +112,9 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
 
     private fun PsiFile.findLineStart(sourceLine: Int): Int? {
         val document = PsiDocumentManager.getInstance(project).getDocument(this) ?: return null
-        var lineStartOffset = document.getLineStartOffset(sourceLine - 1)
+        val adjustedLine = sourceLine - 1
+        if (adjustedLine >= document.lineCount) return null
+        var lineStartOffset = document.getLineStartOffset(adjustedLine)
         while (lineStartOffset < document.textLength && findElementAt(lineStartOffset) is PsiWhiteSpace) {
             lineStartOffset++
         }

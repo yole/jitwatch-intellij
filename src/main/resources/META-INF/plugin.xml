@@ -10,6 +10,8 @@
     
     <idea-version since-build="145.1"/>
 
+    <depends optional="true" config-file="plugin-kotlin.xml">org.jetbrains.kotlin</depends>
+
     <extensionPoints>
         <extensionPoint qualifiedName="ru.yole.jitwatch.languageSupport" beanClass="com.intellij.lang.LanguageExtensionPoint">
             <with attribute="implementationClass" implements="ru.yole.jitwatch.JitWatchLanguageSupport"/>
@@ -29,7 +31,6 @@
     <extensions defaultExtensionNs="ru.yole.jitwatch">
         <languageSupport language="JAVA" implementationClass="ru.yole.jitwatch.JitWatchJavaSupport"/>
     </extensions>
-
 
     <actions>
         <action class="ru.yole.jitwatch.LoadLogAction" id="JitWatch.LoadLog"
