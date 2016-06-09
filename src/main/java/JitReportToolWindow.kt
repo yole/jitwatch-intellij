@@ -3,6 +3,7 @@ package ru.yole.jitwatch
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.NavigatablePsiElement
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
@@ -18,7 +19,7 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
 
     init {
         reportTable.setModelAndUpdateColumns(reportTableModel)
-        add(reportTable, BorderLayout.CENTER)
+        add(JBScrollPane(reportTable), BorderLayout.CENTER)
 
         updateData()
 
