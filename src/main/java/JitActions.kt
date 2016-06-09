@@ -13,4 +13,20 @@ class LoadLogAction : AnAction() {
         val logFile = fileChooser.choose(project).singleOrNull() ?: return
         JitWatchModelService.getInstance(project).loadLog(logFile)
     }
+
+    override fun update(e: AnActionEvent) {
+        e.presentation.isEnabled = e.project != null
+    }
+}
+
+class CloseLogAction : AnAction() {
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
+        JitWatchModelService.getInstance(project).closeLog()
+    }
+
+    override fun update(e: AnActionEvent) {
+        val project = e.project
+        e.presentation.isEnabled = project != null && JitWatchModelService.getInstance(project).model != null
+    }
 }

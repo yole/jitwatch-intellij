@@ -36,6 +36,8 @@ class JitWatchModelService(private val project: Project) {
         get() = _model
 
     fun loadLog(logFile: VirtualFile) {
+        bytecodeAnnotations.clear()
+
         val jitListener = object : IJITListener {
             override fun handleLogEntry(entry: String?) {
             }
@@ -66,6 +68,12 @@ class JitWatchModelService(private val project: Project) {
                 SwingUtilities.invokeLater { modelUpdated() }
             }
         })
+    }
+
+    fun closeLog() {
+        _model = null
+        bytecodeAnnotations.clear()
+        modelUpdated()
     }
 
     private fun modelUpdated() {
