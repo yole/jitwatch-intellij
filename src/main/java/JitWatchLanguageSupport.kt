@@ -12,7 +12,7 @@ interface JitWatchLanguageSupport<ClassT : PsiElement, MethodT : PsiElement> {
     fun getClassVMName(cls: ClassT): String?
     fun getContainingClass(method: MethodT): ClassT?
     fun matchesSignature(member: IMetaMember, method: MethodT): Boolean
-    fun findCallToMember(file: PsiFile, offset:Int, calleeMember: IMetaMember): PsiElement?
+    fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember, sameLineCallIndex: Int): PsiElement?
     fun findAllocation(file: PsiFile, offset:Int, jvmName: String): PsiElement?
 }
 
@@ -23,7 +23,7 @@ object DefaultJitLanguageSupport : JitWatchLanguageSupport<PsiElement, PsiElemen
     override fun getClassVMName(cls: PsiElement) = null
     override fun getContainingClass(method: PsiElement) = null
     override fun matchesSignature(member: IMetaMember, method: PsiElement) = false
-    override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember) = null
+    override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember, sameLineCallIndex: Int) = null
     override fun findAllocation(file: PsiFile, offset: Int, jvmName: String) = null
 }
 

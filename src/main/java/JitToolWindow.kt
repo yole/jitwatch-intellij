@@ -202,8 +202,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
     private fun syncEditorToBytecode(caretPosition: LogicalPosition) {
         val (member, instruction) = bytecodeTextBuilder?.findInstruction(caretPosition.line) ?: return
-        val lineTable = member.memberBytecode.lineTable
-        val sourceLine = lineTable.findSourceLineForBytecodeOffset(instruction?.offset ?: 0)
+        val sourceLine = member.memberBytecode.lineTable.findSourceLineForBytecodeOffset(instruction?.offset ?: 0)
         if (sourceLine != -1) {
             movingCaretInSource = true
             try {
@@ -218,18 +217,13 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
             bytecodeEditor.markupModel.removeHighlighter(lineRangeHighlighter!!)
         }
 
-        val lineEntryIndex = lineTable.entries.indexOfFirst { it.sourceOffset == sourceLine }
-        if (lineEntryIndex >= 0) {
-            val startBytecodeLine = bytecodeTextBuilder!!.findLine(member, lineTable.entries[lineEntryIndex].bytecodeOffset)
-            val endBytecodeOffset = if (lineEntryIndex < lineTable.entries.size - 1)
-                lineTable.entries[lineEntryIndex+1].bytecodeOffset
-            else
-                member.memberBytecode.instructions.last().offset
-
-            val endBytecodeLine = bytecodeTextBuilder!!.findLine(member, endBytecodeOffset)
-            if (startBytecodeLine != null && endBytecodeLine != null) {
-                val startOffset = bytecodeDocument.getLineStartOffset(startBytecodeLine)
-                val endOffset = bytecodeDocument.getLineStartOffset(endBytecodeLine - 1)
+        val instructionsForLine = member.memberBytecode.findInstructionsForSourceLine(sourceLine)
+        if (!instructionsForLine.isEmpty()) {
+            val startLine = bytecodeTextBuilder!!.findLine(member, instructionsForLine.first().offset)
+            val endLine = bytecodeTextBuilder!!.findLine(member, instructionsForLine.last().offset)
+            if (startLine != null && endLine != null) {
+                val startOffset = bytecodeDocument.getLineStartOffset(startLine)
+                val endOffset = bytecodeDocument.getLineStartOffset(endLine)
 
                 val color = EditorColorsManager.getInstance().globalScheme.getColor(EditorColors.CARET_ROW_COLOR)!!
                 lineRangeHighlighter = bytecodeEditor.markupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.CARET_ROW - 1,

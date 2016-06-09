@@ -154,3 +154,21 @@ class JitWatchModelService(private val project: Project) {
         val LOG = Logger.getInstance(JitWatchModelService::class.java)
     }
 }
+
+
+fun MemberBytecode.findInstructionsForSourceLine(sourceLine: Int): List<BytecodeInstruction> {
+    val lineEntryIndex = lineTable.entries.indexOfFirst { it.sourceOffset == sourceLine }
+    if (lineEntryIndex >= 0) {
+        val startBytecodeOffset = lineTable.entries[lineEntryIndex].bytecodeOffset
+        val nextLineBytecodeOffset = if (lineEntryIndex < lineTable.entries.size - 1)
+            lineTable.entries[lineEntryIndex+1].bytecodeOffset
+        else
+            -1
+
+        return instructions.filter {
+            it.offset >= startBytecodeOffset && (nextLineBytecodeOffset == -1 || it.offset < nextLineBytecodeOffset)
+        }
+    }
+    return emptyList()
+
+}

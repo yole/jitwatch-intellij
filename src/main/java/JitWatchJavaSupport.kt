@@ -58,15 +58,19 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
         return erasedType.canonicalText
     }
 
-    override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember): PsiElement? {
+    override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember, sameLineCallIndex: Int): PsiElement? {
         val statement = findStatement(file, offset) ?: return null
         var result: PsiCallExpression? = null
+        var curIndex = 0
         statement.acceptChildren(object : JavaRecursiveElementVisitor() {
             override fun visitCallExpression(callExpression: PsiCallExpression) {
                 super.visitCallExpression(callExpression)
                 val method = callExpression.resolveMethod()
                 if (method != null && matchesSignature(calleeMember, method)) {
-                    result = callExpression
+                    if (curIndex == sameLineCallIndex) {
+                        result = callExpression
+                    }
+                    curIndex++
                 }
             }
         })

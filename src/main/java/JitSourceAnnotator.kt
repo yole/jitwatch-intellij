@@ -60,8 +60,9 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
         return when (lineAnnotation.type) {
             BCAnnotationType.INLINE_SUCCESS, BCAnnotationType.INLINE_FAIL -> {
                 val model = JitWatchModelService.getInstance(method.project).model
+                val index = findSameLineCallIndex(memberBytecode, sourceLine, instruction)
                 val calleeMember = ParseUtil.getMemberFromBytecodeComment(model, member, instruction) ?: return null
-                languageSupport.findCallToMember(psiFile, lineStartOffset, calleeMember)
+                languageSupport.findCallToMember(psiFile, lineStartOffset, calleeMember, index)
             }
 
             BCAnnotationType.ELIMINATED_ALLOCATION -> {
@@ -71,6 +72,22 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
 
             else -> null
         }
+    }
+
+    private fun findSameLineCallIndex(memberBytecode: MemberBytecode,
+                                      sourceLine: Int,
+                                      invokeInstruction: BytecodeInstruction): Int {
+        var result = -1
+        val sameLineInstructions = memberBytecode.findInstructionsForSourceLine(sourceLine)
+        for (instruction in sameLineInstructions) {
+            if (instruction.opcode == invokeInstruction.opcode && instruction.comment == invokeInstruction.comment) {
+                result++
+            }
+            if (instruction == invokeInstruction) {
+                break
+            }
+        }
+        return result.coerceAtLeast(0)
     }
 
     private fun PsiFile.findLineStart(sourceLine: Int): Int? {
