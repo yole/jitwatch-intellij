@@ -1,6 +1,6 @@
 <idea-plugin version="2">
     <extensions defaultExtensionNs="ru.yole.jitwatch">
-        <languageSupport language="kotlin" implementationClass="ru.yole.jitwatch.JitWatchKotlinSupport"/>
+        <languageSupport language="kotlin" implementationClass="ru.yole.jitwatch.languages.JitWatchKotlinSupport"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">

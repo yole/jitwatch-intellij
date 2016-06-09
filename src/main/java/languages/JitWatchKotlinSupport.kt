@@ -1,4 +1,4 @@
-package ru.yole.jitwatch
+package ru.yole.jitwatch.languages
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Computable

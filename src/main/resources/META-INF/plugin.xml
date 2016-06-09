@@ -14,7 +14,7 @@
 
     <extensionPoints>
         <extensionPoint qualifiedName="ru.yole.jitwatch.languageSupport" beanClass="com.intellij.lang.LanguageExtensionPoint">
-            <with attribute="implementationClass" implements="ru.yole.jitwatch.JitWatchLanguageSupport"/>
+            <with attribute="implementationClass" implements="ru.yole.jitwatch.languages.JitWatchLanguageSupport"/>
         </extensionPoint>
     </extensionPoints>
 
@@ -29,7 +29,7 @@
     </extensions>
 
     <extensions defaultExtensionNs="ru.yole.jitwatch">
-        <languageSupport language="JAVA" implementationClass="ru.yole.jitwatch.JitWatchJavaSupport"/>
+        <languageSupport language="JAVA" implementationClass="ru.yole.jitwatch.languages.JitWatchJavaSupport"/>
     </extensions>
 
     <actions>

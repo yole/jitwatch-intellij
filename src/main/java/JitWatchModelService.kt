@@ -24,6 +24,9 @@ import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel
 import org.adoptopenjdk.jitwatch.model.JITEvent
 import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.adoptopenjdk.jitwatch.model.bytecode.*
+import ru.yole.jitwatch.languages.LanguageSupport
+import ru.yole.jitwatch.languages.forElement
+import ru.yole.jitwatch.languages.matchesSignature
 import java.io.File
 import javax.swing.SwingUtilities
 

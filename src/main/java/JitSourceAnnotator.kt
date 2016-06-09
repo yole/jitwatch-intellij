@@ -19,6 +19,7 @@ import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeInstruction
 import org.adoptopenjdk.jitwatch.model.bytecode.LineAnnotation
 import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode
 import org.adoptopenjdk.jitwatch.util.ParseUtil
+import ru.yole.jitwatch.languages.LanguageSupport
 import java.awt.Color
 
 class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, LineAnnotation>>>() {

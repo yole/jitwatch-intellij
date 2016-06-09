@@ -1,4 +1,4 @@
-package ru.yole.jitwatch
+package ru.yole.jitwatch.languages
 
 import com.intellij.lang.LanguageExtension
 import com.intellij.openapi.util.TextRange
@@ -39,12 +39,12 @@ val LanguageSupport = LanguageExtension<JitWatchLanguageSupport<PsiElement, PsiE
 fun <T> LanguageExtension<T>.forElement(element: PsiElement) = forLanguage(element.language)
 
 fun <CT : PsiElement, MT : PsiElement>
-JitWatchLanguageSupport<CT, MT>.matchesSignature(method: MT, metaMember: IMetaMember): Boolean {
+        JitWatchLanguageSupport<CT, MT>.matchesSignature(method: MT, metaMember: IMetaMember): Boolean {
     return matchesSignature(method, metaMember.memberName, metaMember.paramTypeNames.toList(), metaMember.returnTypeName)
 }
 
 fun <CT : PsiElement, MT : PsiElement>
-JitWatchLanguageSupport<CT, MT>.matchesSignature(method: MT, signature: MemberSignatureParts): Boolean {
+        JitWatchLanguageSupport<CT, MT>.matchesSignature(method: MT, signature: MemberSignatureParts): Boolean {
     return matchesSignature(method, signature.memberName, signature.paramTypes.toList(), signature.returnType)
 }
 

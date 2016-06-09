@@ -1,4 +1,4 @@
-package ru.yole.jitwatch
+package ru.yole.jitwatch.languages
 
 import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.openapi.application.ApplicationManager

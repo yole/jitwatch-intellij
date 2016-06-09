@@ -30,6 +30,8 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.content.ContentFactory
 import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.adoptopenjdk.jitwatch.model.bytecode.BCAnnotationType
+import ru.yole.jitwatch.languages.LanguageSupport
+import ru.yole.jitwatch.languages.forElement
 import java.awt.CardLayout
 import java.awt.Color
 import javax.swing.JLabel

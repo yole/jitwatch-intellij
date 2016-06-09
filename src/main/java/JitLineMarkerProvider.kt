@@ -8,6 +8,9 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiElement
 import org.adoptopenjdk.jitwatch.model.IMetaMember
+import ru.yole.jitwatch.languages.DefaultJitLanguageSupport
+import ru.yole.jitwatch.languages.LanguageSupport
+import ru.yole.jitwatch.languages.forElement
 
 class JitLineMarkerProvider : LineMarkerProvider {
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
