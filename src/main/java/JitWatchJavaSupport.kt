@@ -2,6 +2,7 @@ package ru.yole.jitwatch
 
 import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.*
 import com.intellij.psi.util.ClassUtil
@@ -31,6 +32,7 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
             method.name
         if (member.memberName != psiMethodName) return false
 
+        if (member.paramTypeNames.size != method.parameterList.parametersCount) return false
         val paramTypes = member.paramTypeNames zip method.parameterList.parameters.map { it.type.jvmText() }
         if (paramTypes.any { it.first != it.second})
             return false

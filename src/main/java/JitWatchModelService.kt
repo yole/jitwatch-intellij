@@ -30,7 +30,7 @@ import javax.swing.SwingUtilities
 class JitWatchModelService(private val project: Project) {
     private val config = JITWatchConfig()
     private var _model: IReadOnlyJITDataModel? = null
-    private val bytecodeAnnotations = mutableMapOf<VirtualFile, Map<IMetaMember, BytecodeAnnotations>>()
+    private val bytecodeAnnotations = mutableMapOf<MetaClass, Map<IMetaMember, BytecodeAnnotations>>()
 
     val model: IReadOnlyJITDataModel?
         get() = _model
@@ -102,14 +102,14 @@ class JitWatchModelService(private val project: Project) {
         val outputRoots = CompilerModuleExtension.getInstance(module)!!.getOutputRoots(true)
                 .map { it.canonicalPath }
 
-        val annotationsMap = hashMapOf<IMetaMember, BytecodeAnnotations>()
         val allClasses = LanguageSupport.forElement(file).getAllClasses(file)
         for (cls in allClasses) {
+            val memberAnnotations = hashMapOf<IMetaMember, BytecodeAnnotations>()
             val metaClass = ApplicationManager.getApplication().runReadAction(Computable { getMetaClass(cls) }) ?: continue
             metaClass.getClassBytecode(JitWatchModelService.getInstance(project).model, outputRoots)
-            buildAllBytecodeAnnotations(metaClass, annotationsMap)
+            buildAllBytecodeAnnotations(metaClass, memberAnnotations)
+            bytecodeAnnotations[metaClass] = memberAnnotations
         }
-        bytecodeAnnotations[file.virtualFile] = annotationsMap
     }
 
     private fun buildAllBytecodeAnnotations(metaClass: MetaClass, target: MutableMap<IMetaMember, BytecodeAnnotations>) {
@@ -130,12 +130,13 @@ class JitWatchModelService(private val project: Project) {
                                                                 instruction: BytecodeInstruction,
                                                                 annotations: List<LineAnnotation>) -> Unit) {
         val languageSupport = LanguageSupport.forLanguage(psiFile.language)
-        val annotationsForFile = bytecodeAnnotations[psiFile.virtualFile] ?: return
         for (cls in languageSupport.getAllClasses(psiFile)) {
-            val classBC = getMetaClass(cls)?.classBytecode ?: continue
+            val metaClass = getMetaClass(cls)
+            val classBC = metaClass?.classBytecode ?: continue
+            val classAnnotations = bytecodeAnnotations[metaClass] ?: continue
             for (method in languageSupport.getAllMethods(cls)) {
-                val member = annotationsForFile.keys.find { languageSupport.matchesSignature(it, method) } ?: continue
-                val annotations = annotationsForFile[member] ?: continue
+                val member = classAnnotations.keys.find { languageSupport.matchesSignature(it, method) } ?: continue
+                val annotations = classAnnotations[member] ?: continue
                 val memberBytecode = classBC.getMemberBytecode(member) ?: continue
                 for (instruction in memberBytecode.instructions) {
                     val annotationsForBCI = annotations.getAnnotationsForBCI(instruction.offset)
