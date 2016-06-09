@@ -10,7 +10,7 @@ import org.adoptopenjdk.jitwatch.model.Tag
 import org.adoptopenjdk.jitwatch.treevisitor.ITreeVisitable
 import org.adoptopenjdk.jitwatch.util.ParseUtil
 
-class InlineFailureInfo(val callSite: IMetaMember, val bci: Int, val callee: IMetaMember, val reason: String)
+class InlineFailureInfo(val callSite: IMetaMember, val bci: Int, val callee: IMetaMember, val calleeSize: Int, val reason: String)
 
 class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember) -> Boolean) : ITreeVisitable {
     private val _failures = mutableListOf<InlineFailureInfo>()
@@ -60,9 +60,11 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
                     TAG_INLINE_FAIL -> {
                         val reason = tagAttrs[ATTR_REASON]
 
+                        val method = parseDictionary.getMethod(methodID)
                         val metaMember = ParseUtil.lookupMember(methodID, parseDictionary, model)
                         if (metaMember != null && filter(metaMember)) {
-                            failures.add(InlineFailureInfo(callSite, bci ?: currentBCI, metaMember, reason ?: "Unknown"))
+                            failures.add(InlineFailureInfo(callSite, bci ?: currentBCI, metaMember,
+                                    method?.getAttribute(ATTR_BYTES)?.toInt() ?: -1, reason ?: "Unknown"))
                         }
 
                         methodID = null

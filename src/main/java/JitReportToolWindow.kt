@@ -15,7 +15,8 @@ import javax.swing.JPanel
 class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
     private val modelService = JitWatchModelService.getInstance(project)
     private val reportTable = TableView<InlineFailureInfo>()
-    private val reportTableModel = ListTableModel<InlineFailureInfo>(CallSiteColumnInfo, CalleeColumnInfo, ReasonColumnInfo)
+    private val reportTableModel = ListTableModel<InlineFailureInfo>(
+            CallSiteColumnInfo, CalleeColumnInfo, CalleeSizeColumnInfo, ReasonColumnInfo)
 
     init {
         reportTable.setModelAndUpdateColumns(reportTableModel)
@@ -62,6 +63,12 @@ object CallSiteColumnInfo : ColumnInfo<InlineFailureInfo, String>("Call site") {
 object CalleeColumnInfo : ColumnInfo<InlineFailureInfo, String>("Callee") {
     override fun valueOf(item: InlineFailureInfo): String? {
         return item.callee.fullyQualifiedMemberName
+    }
+}
+
+object CalleeSizeColumnInfo : ColumnInfo<InlineFailureInfo, Int>("Callee Size") {
+    override fun valueOf(item: InlineFailureInfo): Int? {
+        return item.calleeSize
     }
 }
 
