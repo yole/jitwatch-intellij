@@ -6,6 +6,7 @@ import com.intellij.openapi.util.Computable
 import com.intellij.psi.*
 import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.TypeConversionUtil
 import org.adoptopenjdk.jitwatch.model.IMetaMember
 
 class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
@@ -22,14 +23,35 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     override fun getContainingClass(method: PsiMethod): PsiClass? = method.containingClass
 
     override fun matchesSignature(member: IMetaMember, method: PsiMethod): Boolean {
-        if (member.memberName != method.name) return false
-        val paramTypes = member.paramTypeNames zip method.parameterList.parameters.map { it.type.canonicalText }
+        val psiMethodName = if (method.isConstructor)
+            JVMNameUtil.getClassVMName(method.containingClass)?.substringAfterLast('.') ?: method.name
+        else
+            method.name
+        if (member.memberName != psiMethodName) return false
+
+        val paramTypes = member.paramTypeNames zip method.parameterList.parameters.map { it.type.jvmText() }
         if (paramTypes.any { it.first != it.second})
             return false
-        val psiMethodReturnTypeName = if (method.isConstructor) "void" else method.returnType?.canonicalText ?: ""
+
+        val psiMethodReturnTypeName = if (method.isConstructor) "void" else method.returnType?.jvmText() ?: ""
         if (member.returnTypeName != psiMethodReturnTypeName)
             return false
+
         return true
+    }
+
+    private fun PsiType.jvmText(): String {
+        val erasedType = TypeConversionUtil.erasure(this)
+        if (erasedType is PsiClassType) {
+            val psiClass = erasedType.resolve()
+            if (psiClass != null) {
+                val vmName = JVMNameUtil.getClassVMName(psiClass)
+                if (vmName != null) {
+                    return vmName
+                }
+            }
+        }
+        return erasedType.canonicalText
     }
 
     override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: IMetaMember): PsiElement? {
