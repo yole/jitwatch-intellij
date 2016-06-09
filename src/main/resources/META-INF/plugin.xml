@@ -26,6 +26,7 @@
         <externalAnnotator language="JAVA" implementationClass="ru.yole.jitwatch.JitSourceAnnotator"/>
 
         <toolWindow id="JitWatch" factoryClass="ru.yole.jitwatch.JitToolWindowFactory" anchor="right" canCloseContents="false"/>
+        <toolWindow id="JitWatch Report" factoryClass="ru.yole.jitwatch.JitReportToolWindowFactory" anchor="bottom" canCloseContents="false"/>
 
         <runConfigurationExtension implementation="ru.yole.jitwatch.JitRunConfigurationExtension"/>
     </extensions>

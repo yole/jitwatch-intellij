@@ -1,11 +1,13 @@
 package ru.yole.jitwatch.languages
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
+import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.jetbrains.kotlin.codegen.ClassBuilderMode
 import org.jetbrains.kotlin.codegen.state.IncompatibleClassTracker
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper
@@ -16,6 +18,8 @@ import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.fileClasses.NoResolveFileClassesProvider
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptor
+import org.jetbrains.kotlin.idea.search.allScope
+import org.jetbrains.kotlin.idea.stubindex.KotlinFullClassNameIndex
 import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
@@ -29,6 +33,10 @@ class JitWatchKotlinSupport : JitWatchLanguageSupport<KtClassOrObject, KtCallabl
             ApplicationManager.getApplication().runReadAction(Computable {
                 PsiTreeUtil.collectElementsOfType(file, KtClassOrObject::class.java).toList()
             })
+
+    override fun findClass(project: Project, metaClass: MetaClass): KtClassOrObject? {
+        return KotlinFullClassNameIndex.getInstance().get(metaClass.fullyQualifiedName, project, project.allScope()).firstOrNull()
+    }
 
     override fun getAllMethods(cls: KtClassOrObject): List<KtCallableDeclaration> =
         cls.declarations.filterIsInstance<KtCallableDeclaration>()

@@ -1,14 +1,20 @@
 package ru.yole.jitwatch.languages
 
+import com.intellij.lang.Language
 import com.intellij.lang.LanguageExtension
+import com.intellij.lang.LanguageExtensionPoint
+import com.intellij.openapi.extensions.Extensions
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import org.adoptopenjdk.jitwatch.model.IMetaMember
 import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
+import org.adoptopenjdk.jitwatch.model.MetaClass
 
 interface JitWatchLanguageSupport<ClassT : PsiElement, MethodT : PsiElement> {
     fun getAllClasses(file: PsiFile): List<ClassT>
+    fun findClass(project: Project, metaClass: MetaClass): ClassT?
     fun getAllMethods(cls: ClassT): List<MethodT>
     fun isMethod(element: PsiElement): Boolean
     fun findMethodAtOffset(file: PsiFile, offset: Int): MethodT?
@@ -22,6 +28,7 @@ interface JitWatchLanguageSupport<ClassT : PsiElement, MethodT : PsiElement> {
 
 object DefaultJitLanguageSupport : JitWatchLanguageSupport<PsiElement, PsiElement> {
     override fun getAllClasses(file: PsiFile) = emptyList<PsiElement>()
+    override fun findClass(project: Project, metaClass: MetaClass) = null
     override fun getAllMethods(cls: PsiElement) = emptyList<PsiElement>()
     override fun isMethod(element: PsiElement) = false
     override fun findMethodAtOffset(file: PsiFile, offset: Int) = null
@@ -33,8 +40,10 @@ object DefaultJitLanguageSupport : JitWatchLanguageSupport<PsiElement, PsiElemen
     override fun findAllocation(file: PsiFile, offset: Int, jvmName: String) = null
 }
 
+private val EP_NAME = "ru.yole.jitwatch.languageSupport"
+
 val LanguageSupport = LanguageExtension<JitWatchLanguageSupport<PsiElement, PsiElement>>(
-        "ru.yole.jitwatch.languageSupport", DefaultJitLanguageSupport)
+        EP_NAME, DefaultJitLanguageSupport)
 
 fun <T> LanguageExtension<T>.forElement(element: PsiElement) = forLanguage(element.language)
 
@@ -49,3 +58,10 @@ fun <CT : PsiElement, MT : PsiElement>
 }
 
 fun PsiElement.matchesSignature(metaMember: IMetaMember) = LanguageSupport.forElement(this).matchesSignature(this, metaMember)
+
+fun getAllSupportedLanguages(): List<JitWatchLanguageSupport<PsiElement, PsiElement>> {
+    val extensions = Extensions.getExtensions(EP_NAME)
+    val supportedLanguageNames = extensions.map { (it as LanguageExtensionPoint<*>).language }
+    val supportedLanguages = supportedLanguageNames.map { Language.findLanguageByID(it)}.filterNotNull()
+    return supportedLanguages.map { LanguageSupport.forLanguage(it) }
+}

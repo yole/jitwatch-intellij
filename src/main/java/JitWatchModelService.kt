@@ -11,7 +11,6 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.util.Computable
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.util.containers.isNullOrEmpty
@@ -24,8 +23,10 @@ import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel
 import org.adoptopenjdk.jitwatch.model.JITEvent
 import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.adoptopenjdk.jitwatch.model.bytecode.*
+import org.adoptopenjdk.jitwatch.treevisitor.TreeVisitor
 import ru.yole.jitwatch.languages.LanguageSupport
 import ru.yole.jitwatch.languages.forElement
+import ru.yole.jitwatch.languages.getAllSupportedLanguages
 import ru.yole.jitwatch.languages.matchesSignature
 import java.io.File
 import javax.swing.SwingUtilities
@@ -33,10 +34,15 @@ import javax.swing.SwingUtilities
 class JitWatchModelService(private val project: Project) {
     private val config = JITWatchConfig()
     private var _model: IReadOnlyJITDataModel? = null
+    private var inlineAnalyzer: InlineAnalyzer? = null
     private val bytecodeAnnotations = mutableMapOf<MetaClass, Map<IMetaMember, BytecodeAnnotations>>()
+    private val allLanguages = getAllSupportedLanguages()
 
     val model: IReadOnlyJITDataModel?
         get() = _model
+
+    val inlineFailures: List<InlineFailureInfo>
+        get() = inlineAnalyzer?.failures.orEmpty()
 
     fun loadLog(logFile: File) {
         bytecodeAnnotations.clear()
@@ -68,6 +74,14 @@ class JitWatchModelService(private val project: Project) {
                 parser.processLogFile(logFile, errorListener)
                 _model = parser.model
 
+                inlineAnalyzer = InlineAnalyzer(parser.model) { metaMember ->
+                    val psiMember = getPsiMember(metaMember)
+                    psiMember != null && ModuleUtil.findModuleForPsiElement(psiMember) != null
+                }
+                ApplicationManager.getApplication().runReadAction {
+                    TreeVisitor.walkTree(_model, inlineAnalyzer)
+                }
+
                 SwingUtilities.invokeLater { modelUpdated() }
             }
         })
@@ -96,6 +110,22 @@ class JitWatchModelService(private val project: Project) {
         val languageSupport = LanguageSupport.forLanguage(method.language) ?: return null
         val metaClass = getMetaClass(languageSupport.getContainingClass(method)) ?: return null
         return metaClass.metaMembers.find { method.matchesSignature(it) }
+    }
+
+    fun getPsiMember(metaMember: IMetaMember): PsiElement? {
+        val psiClass = getPsiClass(metaMember.metaClass) ?: return null
+        val allMethods = LanguageSupport.forElement(psiClass).getAllMethods(psiClass)
+        return allMethods.find { it.matchesSignature(metaMember )}
+    }
+
+    fun getPsiClass(metaClass: MetaClass): PsiElement? {
+        for (languageSupport in allLanguages) {
+            val psiClass = languageSupport.findClass(project, metaClass)
+            if (psiClass != null) {
+                return psiClass
+            }
+        }
+        return null
     }
 
     fun loadBytecodeAsync(file: PsiFile, callback: () -> Unit) {

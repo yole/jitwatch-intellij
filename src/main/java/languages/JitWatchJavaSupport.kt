@@ -1,7 +1,9 @@
 package ru.yole.jitwatch.languages
 
 import com.intellij.debugger.engine.JVMNameUtil
+import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
@@ -9,12 +11,19 @@ import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.TypeConversionUtil
 import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
+import org.adoptopenjdk.jitwatch.model.MetaClass
+import org.jetbrains.kotlin.idea.search.allScope
 
 class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     override fun getAllClasses(file: PsiFile): List<PsiClass> =
         ApplicationManager.getApplication().runReadAction(Computable {
             PsiTreeUtil.collectElementsOfType(file, PsiClass::class.java).toList()
         })
+
+    override fun findClass(project: Project, metaClass: MetaClass): PsiClass? {
+        val psiClass = JavaPsiFacade.getInstance(project).findClass(metaClass.fullyQualifiedName, project.allScope())
+        return if (psiClass?.language == JavaLanguage.INSTANCE) psiClass else null
+    }
 
     override fun getAllMethods(cls: PsiClass): List<PsiMethod> = (cls.methods + cls.constructors).toList()
 

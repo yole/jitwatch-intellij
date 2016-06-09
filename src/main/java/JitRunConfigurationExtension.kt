@@ -49,7 +49,7 @@ class JitRunConfigurationExtension : RunConfigurationExtension() {
         JitWatchSettings.clear(runConfigurationBase)
     }
 
-    override fun getEditorTitle() = "HotSpot"
+    override fun getEditorTitle() = "JitWatch"
 
     override fun isApplicableFor(configuration: RunConfigurationBase) = configuration is CommonJavaRunConfigurationParameters
 
