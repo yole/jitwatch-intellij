@@ -41,5 +41,9 @@
                 text="Close HotSpot Compilation Log">
             <add-to-group group-id="AnalyzeMenu" anchor="last"/>
         </action>
+        <action class="ru.yole.jitwatch.ShowInlineStructureAction" id="JitWatch.InlineStructure"
+                text="Show Inlining Structure">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>
