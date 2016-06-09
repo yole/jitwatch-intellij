@@ -9,14 +9,13 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.LogicalPosition
 import com.intellij.openapi.editor.ScrollType
+import com.intellij.openapi.editor.colors.EditorColors
+import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.event.CaretAdapter
 import com.intellij.openapi.editor.event.CaretEvent
 import com.intellij.openapi.editor.ex.RangeHighlighterEx
 import com.intellij.openapi.editor.impl.DocumentMarkupModel
-import com.intellij.openapi.editor.markup.HighlighterLayer
-import com.intellij.openapi.editor.markup.HighlighterTargetArea
-import com.intellij.openapi.editor.markup.MarkupModel
-import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.editor.markup.*
 import com.intellij.openapi.fileEditor.*
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.project.Project
@@ -29,11 +28,8 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.ui.JBColor
 import com.intellij.ui.content.ContentFactory
-import com.intellij.util.containers.isNullOrEmpty
-import org.adoptopenjdk.jitwatch.model.IMetaMember
 import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.adoptopenjdk.jitwatch.model.bytecode.BCAnnotationType
-import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeAnnotations
 import java.awt.CardLayout
 import java.awt.Color
 import javax.swing.JLabel
@@ -59,6 +55,9 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
     private var bytecodeTextBuilder: BytecodeTextBuilder? = null
     private var activeSourceEditor: Editor? = null
     private var activeSourceFile: PsiFile? = null
+    private var lineRangeHighlighter: RangeHighlighter? = null
+
+    private var movingCaretInSource = false
 
     init {
         project.messageBus.connect(this).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerAdapter() {
@@ -69,10 +68,16 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
         EditorFactory.getInstance().eventMulticaster.addCaretListener(object : CaretAdapter() {
             override fun caretPositionChanged(e: CaretEvent) {
-                if (e.editor != activeSourceEditor) return
+                if (e.editor != activeSourceEditor || movingCaretInSource) return
                 syncBytecodeToEditor(e.newPosition)
             }
         }, this)
+
+        bytecodeEditor.caretModel.addCaretListener(object : CaretAdapter() {
+            override fun caretPositionChanged(e: CaretEvent) {
+                syncEditorToBytecode(e.newPosition)
+            }
+        })
 
         setupUI()
         val fileEditorManager = FileEditorManager.getInstance(project)
@@ -192,18 +197,56 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         val metaMember = modelService.getMetaMember(methodAtCaret) ?: return
         val lineTableEntry = metaMember.memberBytecode.lineTable.getEntryForSourceLine(caretPosition.line + 1) ?: return
         val bytecodeLine = bytecodeTextBuilder?.findLine(metaMember, lineTableEntry.bytecodeOffset) ?: return
-        moveCaretInBytecode(bytecodeLine)
+        bytecodeEditor.moveCaretToLine(bytecodeLine)
     }
 
-    private fun moveCaretInBytecode(bytecodeLine: Int) {
-        bytecodeEditor.caretModel.moveToLogicalPosition(LogicalPosition(bytecodeLine, 0))
-        bytecodeEditor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
+    private fun syncEditorToBytecode(caretPosition: LogicalPosition) {
+        val (member, instruction) = bytecodeTextBuilder?.findInstruction(caretPosition.line) ?: return
+        val lineTable = member.memberBytecode.lineTable
+        val sourceLine = lineTable.findSourceLineForBytecodeOffset(instruction?.offset ?: 0)
+        if (sourceLine != -1) {
+            movingCaretInSource = true
+            try {
+                activeSourceEditor?.moveCaretToLine(sourceLine - 1)
+            }
+            finally {
+                movingCaretInSource = false
+            }
+        }
+
+        if (lineRangeHighlighter != null) {
+            bytecodeEditor.markupModel.removeHighlighter(lineRangeHighlighter!!)
+        }
+
+        val lineEntryIndex = lineTable.entries.indexOfFirst { it.sourceOffset == sourceLine }
+        if (lineEntryIndex >= 0) {
+            val startBytecodeLine = bytecodeTextBuilder!!.findLine(member, lineTable.entries[lineEntryIndex].bytecodeOffset)
+            val endBytecodeOffset = if (lineEntryIndex < lineTable.entries.size - 1)
+                lineTable.entries[lineEntryIndex+1].bytecodeOffset
+            else
+                member.memberBytecode.instructions.last().offset
+
+            val endBytecodeLine = bytecodeTextBuilder!!.findLine(member, endBytecodeOffset)
+            if (startBytecodeLine != null && endBytecodeLine != null) {
+                val startOffset = bytecodeDocument.getLineStartOffset(startBytecodeLine)
+                val endOffset = bytecodeDocument.getLineStartOffset(endBytecodeLine - 1)
+
+                val color = EditorColorsManager.getInstance().globalScheme.getColor(EditorColors.CARET_ROW_COLOR)!!
+                lineRangeHighlighter = bytecodeEditor.markupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.CARET_ROW - 1,
+                        TextAttributes(null, color.darker(), null, null, 0), HighlighterTargetArea.LINES_IN_RANGE)
+            }
+        }
+    }
+
+    private fun Editor.moveCaretToLine(line: Int) {
+        caretModel.moveToLogicalPosition(LogicalPosition(line, 0))
+        scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
     }
 
     fun navigateToMember(member: PsiElement) {
         val metaMember = modelService.getMetaMember(member) ?: return
         val bytecodeLine = bytecodeTextBuilder?.findLine(metaMember) ?: return
-        moveCaretInBytecode(bytecodeLine)
+        bytecodeEditor.moveCaretToLine(bytecodeLine)
     }
 
     override fun dispose() {

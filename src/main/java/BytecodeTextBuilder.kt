@@ -13,6 +13,7 @@ class BytecodeTextBuilder() {
     private val builder = StringBuilder()
     private var currentLine = 0
     private val memberIndex = mutableMapOf<IMetaMember, MemberBytecodeMap>()
+    private val lineIndex = mutableListOf<Any?>()
 
     fun appendClass(metaClass: MetaClass) {
         for (member in metaClass.metaMembers) {
@@ -20,9 +21,9 @@ class BytecodeTextBuilder() {
             memberIndex[member] = bytecodeMap
 
             val memberBytecode = member.memberBytecode
-            appendLine(member.toStringUnqualifiedMethodName(false))
+            appendLine(member.toStringUnqualifiedMethodName(false), member)
             if (memberBytecode == null) {
-                appendLine("NO BYTECODE FOUND")
+                appendLine("NO BYTECODE FOUND", null)
             }
             else {
                 appendBytecode(memberBytecode, bytecodeMap)
@@ -33,8 +34,9 @@ class BytecodeTextBuilder() {
     val text: String
         get() = builder.toString()
 
-    private fun appendLine(text: String) {
+    private fun appendLine(text: String, associatedObject: Any?) {
         builder.append(text).append("\n")
+        lineIndex.add(associatedObject)
         currentLine++
     }
 
@@ -43,7 +45,7 @@ class BytecodeTextBuilder() {
         for (instruction in memberBC.instructions) {
             bytecodeMap.instructionToLineMap[instruction] = currentLine
             for (line in 0 until instruction.labelLines.coerceAtLeast(1)) {
-                appendLine("    " + instruction.toString(maxOffset, line))
+                appendLine("    " + instruction.toString(maxOffset, line), instruction)
             }
         }
     }
@@ -55,5 +57,19 @@ class BytecodeTextBuilder() {
     fun findLine(member: IMetaMember, bytecodeOffset: Int): Int? {
         val instruction = member.memberBytecode.instructions.firstOrNull { it.offset >= bytecodeOffset } ?: return null
         return memberIndex[member]?.instructionToLineMap?.get(instruction)
+    }
+
+    fun findInstruction(line: Int): Pair<IMetaMember, BytecodeInstruction?>? {
+        val elementAtLine = lineIndex[line]
+        if (elementAtLine is IMetaMember) {
+            return elementAtLine to null
+        }
+        for (memberLine in (line-1) downTo 0) {
+            val elementAtMemberLine = lineIndex[memberLine]
+            if (elementAtMemberLine is IMetaMember) {
+                return elementAtMemberLine to (elementAtLine as? BytecodeInstruction)
+            }
+        }
+        return null
     }
 }
