@@ -197,9 +197,10 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
     }
 
     private fun syncBytecodeToEditor(caretPosition: LogicalPosition) {
-        val caretOffset = activeSourceEditor!!.logicalPositionToOffset(caretPosition)
-        val languageSupport = LanguageSupport.forLanguage(activeSourceFile!!.language)
-        val methodAtCaret = languageSupport.findMethodAtOffset(activeSourceFile!!, caretOffset) ?: return
+        val sourceFile = activeSourceFile ?: return
+        val caretOffset = activeSourceEditor?.logicalPositionToOffset(caretPosition) ?: return
+        val languageSupport = LanguageSupport.forLanguage(sourceFile.language)
+        val methodAtCaret = languageSupport.findMethodAtOffset(sourceFile, caretOffset) ?: return
         val metaMember = modelService.getMetaMember(methodAtCaret) ?: return
         val lineTableEntry = metaMember.memberBytecode.lineTable.getEntryForSourceLine(caretPosition.line + 1) ?: return
         val bytecodeLine = bytecodeTextBuilder?.findLine(metaMember, lineTableEntry.bytecodeOffset) ?: return
