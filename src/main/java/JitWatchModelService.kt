@@ -38,7 +38,7 @@ class JitWatchModelService(private val project: Project) {
     val model: IReadOnlyJITDataModel?
         get() = _model
 
-    fun loadLog(logFile: VirtualFile) {
+    fun loadLog(logFile: File) {
         bytecodeAnnotations.clear()
 
         val jitListener = object : IJITListener {
@@ -65,7 +65,7 @@ class JitWatchModelService(private val project: Project) {
             override fun run(indicator: ProgressIndicator) {
                 val parser = HotSpotLogParser(jitListener)
                 parser.config = config
-                parser.processLogFile(File(logFile.canonicalPath), errorListener)
+                parser.processLogFile(logFile, errorListener)
                 _model = parser.model
 
                 SwingUtilities.invokeLater { modelUpdated() }

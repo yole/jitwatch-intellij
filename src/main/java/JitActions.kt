@@ -4,6 +4,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.fileChooser.FileChooserFactory
+import java.io.File
 
 class LoadLogAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
@@ -11,7 +12,7 @@ class LoadLogAction : AnAction() {
         val fileChooserDescriptor = FileChooserDescriptor(true, false, false, false, false, false)
         val fileChooser = FileChooserFactory.getInstance().createFileChooser(fileChooserDescriptor, project, null)
         val logFile = fileChooser.choose(project).singleOrNull() ?: return
-        JitWatchModelService.getInstance(project).loadLog(logFile)
+        JitWatchModelService.getInstance(project).loadLog(File(logFile.path))
     }
 
     override fun update(e: AnActionEvent) {
