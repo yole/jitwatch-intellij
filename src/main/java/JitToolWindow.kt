@@ -20,14 +20,11 @@ import com.intellij.openapi.fileEditor.*
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.ToolWindow
-import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.ui.JBColor
-import com.intellij.ui.content.ContentFactory
 import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.adoptopenjdk.jitwatch.model.bytecode.BCAnnotationType
 import ru.yole.jitwatch.languages.LanguageSupport
@@ -82,13 +79,18 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         })
 
         setupUI()
-        val fileEditorManager = FileEditorManager.getInstance(project)
-        updateContent(fileEditorManager.selectedFiles.firstOrNull(), fileEditorManager.selectedEditors.firstOrNull(), true)
+        updateContentFromSelectedEditor()
+        modelService.addUpdateListener { updateContentFromSelectedEditor() }
     }
 
     private fun setupUI() {
         add(messageLabel, MESSAGE_CARD)
         add(bytecodeEditor.component, EDITOR_CARD)
+    }
+
+    private fun updateContentFromSelectedEditor() {
+        val fileEditorManager = FileEditorManager.getInstance(project)
+        updateContent(fileEditorManager.selectedFiles.firstOrNull(), fileEditorManager.selectedEditors.firstOrNull(), true)
     }
 
     private fun updateContent(file: VirtualFile?, fileEditor: FileEditor?, syncCaret: Boolean = false) {
@@ -253,13 +255,5 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
             val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("JitWatch") ?: return null
             return toolWindow.contentManager.getContent(0)?.component as? JitToolWindow
         }
-    }
-}
-
-class JitToolWindowFactory : ToolWindowFactory {
-    override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        toolWindow.contentManager.addContent(
-                ContentFactory.SERVICE.getInstance().createContent(JitToolWindow(project), "", false)
-        )
     }
 }

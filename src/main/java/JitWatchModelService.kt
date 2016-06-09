@@ -37,6 +37,7 @@ class JitWatchModelService(private val project: Project) {
     private var inlineAnalyzer: InlineAnalyzer? = null
     private val bytecodeAnnotations = mutableMapOf<MetaClass, Map<IMetaMember, BytecodeAnnotations>>()
     private val allLanguages = getAllSupportedLanguages()
+    private val updateListeners = mutableListOf<() -> Unit>()
 
     val model: IReadOnlyJITDataModel?
         get() = _model
@@ -44,7 +45,11 @@ class JitWatchModelService(private val project: Project) {
     val inlineFailures: List<InlineFailureInfo>
         get() = inlineAnalyzer?.failures.orEmpty()
 
-    fun loadLog(logFile: File) {
+    fun addUpdateListener(listener: () -> Unit) {
+        updateListeners.add(listener)
+    }
+
+    fun loadLog(logFile: File, callback: () -> Unit = {}) {
         bytecodeAnnotations.clear()
 
         val jitListener = object : IJITListener {
@@ -82,19 +87,26 @@ class JitWatchModelService(private val project: Project) {
                     TreeVisitor.walkTree(_model, inlineAnalyzer)
                 }
 
-                SwingUtilities.invokeLater { modelUpdated() }
+                SwingUtilities.invokeLater {
+                    modelUpdated()
+                    callback()
+                }
             }
         })
     }
 
     fun closeLog() {
         _model = null
+        inlineAnalyzer = null
         bytecodeAnnotations.clear()
         modelUpdated()
     }
 
     private fun modelUpdated() {
         DaemonCodeAnalyzer.getInstance(project).restart()
+        for (listener in updateListeners) {
+            listener()
+        }
     }
 
     fun getMetaClass(cls: PsiElement?): MetaClass? {
