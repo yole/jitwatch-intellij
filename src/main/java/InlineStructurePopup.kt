@@ -44,7 +44,7 @@ class InlineTreeNodeDescriptor(project: Project,
         : PresentableNodeDescriptor<CompileNode>(project, parentDescriptor)
 {
     override fun update(presentation: PresentationData) {
-        presentation.addText(compileNode.memberName,
+        presentation.addText(compileNode.member.metaClass.name + "." + compileNode.memberName,
                 if (compileNode.isInlined || isRoot)
                     SimpleTextAttributes.REGULAR_ATTRIBUTES
                 else
