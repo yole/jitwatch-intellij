@@ -57,6 +57,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
     private var lineRangeHighlighter: RangeHighlighter? = null
 
     private var movingCaretInSource = false
+    private var movingCaretInBytecode = false
 
     init {
         project.messageBus.connect(this).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerAdapter() {
@@ -74,6 +75,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
         bytecodeEditor.caretModel.addCaretListener(object : CaretAdapter() {
             override fun caretPositionChanged(e: CaretEvent) {
+                if (movingCaretInBytecode) return
                 syncEditorToBytecode(e.newPosition)
             }
         })
@@ -201,7 +203,13 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         val metaMember = modelService.getMetaMember(methodAtCaret) ?: return
         val lineTableEntry = metaMember.memberBytecode.lineTable.getEntryForSourceLine(caretPosition.line + 1) ?: return
         val bytecodeLine = bytecodeTextBuilder?.findLine(metaMember, lineTableEntry.bytecodeOffset) ?: return
-        bytecodeEditor.moveCaretToLine(bytecodeLine)
+        movingCaretInBytecode = true
+        try {
+            bytecodeEditor.moveCaretToLine(bytecodeLine)
+        }
+        finally {
+            movingCaretInBytecode = false
+        }
     }
 
     private fun syncEditorToBytecode(caretPosition: LogicalPosition) {

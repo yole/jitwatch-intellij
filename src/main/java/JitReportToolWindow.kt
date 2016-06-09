@@ -1,5 +1,6 @@
 package ru.yole.jitwatch
 
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.ui.table.TableView
@@ -39,6 +40,14 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
     private fun navigateToSelectedCall() {
         val failureInfo = reportTable.selectedObject ?: return
         val psiMethod = JitWatchModelService.getInstance(project).getPsiMember(failureInfo.callSite) ?: return
+        val memberBC = failureInfo.callSite.memberBytecode
+        if (memberBC != null) {
+            val sourceLine = memberBC.lineTable.findSourceLineForBytecodeOffset(failureInfo.bci)
+            if (sourceLine != -1) {
+                OpenFileDescriptor(project, psiMethod.containingFile.virtualFile, sourceLine - 1, 0).navigate(true)
+                return
+            }
+        }
         (psiMethod as? NavigatablePsiElement)?.navigate(true)
     }
 }

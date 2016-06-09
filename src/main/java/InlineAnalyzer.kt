@@ -10,7 +10,7 @@ import org.adoptopenjdk.jitwatch.model.Tag
 import org.adoptopenjdk.jitwatch.treevisitor.ITreeVisitable
 import org.adoptopenjdk.jitwatch.util.ParseUtil
 
-class InlineFailureInfo(val callSite: IMetaMember, val callee: IMetaMember, val reason: String)
+class InlineFailureInfo(val callSite: IMetaMember, val bci: Int, val callee: IMetaMember, val reason: String)
 
 class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember) -> Boolean) : ITreeVisitable {
     private val _failures = mutableListOf<InlineFailureInfo>()
@@ -31,7 +31,12 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
                                        val failures: MutableList<InlineFailureInfo>,
                                        val filter: (IMetaMember) -> Boolean) : AbstractJournalVisitable() {
         override fun visitTag(toVisit: Tag, parseDictionary: IParseDictionary) {
+            processParseTag(toVisit, parseDictionary)
+        }
+
+        private fun processParseTag(toVisit: Tag, parseDictionary: IParseDictionary, bci: Int? = null) {
             var methodID: String? = null
+            var currentBCI : Int = 0
 
             for (child in toVisit.children) {
                 val tagName = child.name
@@ -39,8 +44,13 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
                 val tagAttrs = child.attributes
 
                 when (tagName) {
-                    TAG_METHOD -> {
-                        methodID = tagAttrs[ATTR_ID]
+                    TAG_METHOD -> methodID = tagAttrs[ATTR_ID]
+
+                    TAG_BC -> {
+                        val newBCI = tagAttrs[ATTR_BCI]
+                        if (newBCI != null) {
+                            currentBCI = newBCI.toInt()
+                        }
                     }
 
                     TAG_CALL -> {
@@ -52,17 +62,14 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
 
                         val metaMember = ParseUtil.lookupMember(methodID, parseDictionary, model)
                         if (metaMember != null && filter(metaMember)) {
-                            failures.add(InlineFailureInfo(callSite, metaMember, reason ?: "Unknown"))
+                            failures.add(InlineFailureInfo(callSite, bci ?: currentBCI, metaMember, reason ?: "Unknown"))
                         }
 
                         methodID = null
                     }
 
-                    TAG_INLINE_SUCCESS -> {
-                    }
-
                     TAG_PARSE -> {
-                        visitTag(child, parseDictionary)
+                        processParseTag(child, parseDictionary, bci ?: currentBCI)
                     }
 
                     TAG_PHASE -> {
