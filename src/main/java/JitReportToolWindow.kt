@@ -100,13 +100,13 @@ object CalleeSizeColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Callee Size")
     override fun getComparator() = compareBy<InlineFailureGroup> { it.calleeSize }
 }
 
-object CalleeCountColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Callee Invocations") {
+object CalleeCountColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Invocations") {
     override fun valueOf(item: InlineFailureGroup) = item.calleeInvocationCount
 
     override fun getComparator() = compareBy<InlineFailureGroup> { it.calleeInvocationCount }
 }
 
-object CallSiteColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Call sites") {
+object CallSiteColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Call Sites") {
     override fun valueOf(item: InlineFailureGroup) = item.callSites.size
 
     override fun getRenderer(item: InlineFailureGroup?) = LinkRenderer
