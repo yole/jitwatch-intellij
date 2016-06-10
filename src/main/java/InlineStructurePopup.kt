@@ -44,7 +44,7 @@ class InlineTreeNodeDescriptor(project: Project,
         : PresentableNodeDescriptor<CompileNode>(project, parentDescriptor)
 {
     override fun update(presentation: PresentationData) {
-        presentation.addText(compileNode.member.metaClass.name + "." + compileNode.memberName,
+        presentation.addText(compileNode.member?.presentableName() ?: "<Unknown>",
                 if (compileNode.isInlined || isRoot)
                     SimpleTextAttributes.REGULAR_ATTRIBUTES
                 else
@@ -92,4 +92,8 @@ class ShowInlineStructureAction : AnAction() {
         }
         return null
     }
+}
+
+fun IMetaMember.presentableName(): String {
+    return (metaClass?.name ?: "<unknown>") + "." + memberName
 }

@@ -73,7 +73,7 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
 
     private fun showCallSitesPopup(e: MouseEvent, callSites: List<InlineCallSite>) {
         val popupStep = object : BaseListPopupStep<InlineCallSite>("Call Sites", callSites) {
-            override fun getTextFor(value: InlineCallSite) = value.member.metaClass.name + "." + value.member.memberName
+            override fun getTextFor(value: InlineCallSite) = value.member.presentableName()
 
             override fun onChosen(selectedValue: InlineCallSite?, finalChoice: Boolean): PopupStep<*>? {
                 if (selectedValue != null) {
