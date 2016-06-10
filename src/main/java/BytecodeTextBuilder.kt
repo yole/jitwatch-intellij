@@ -22,12 +22,10 @@ class BytecodeTextBuilder() {
 
             val memberBytecode = member.memberBytecode
             appendLine(member.toStringUnqualifiedMethodName(false), member)
-            if (memberBytecode == null) {
-                appendLine("NO BYTECODE FOUND", null)
-            }
-            else {
+            if (memberBytecode != null) {
                 appendBytecode(memberBytecode, bytecodeMap)
             }
+            appendLine("", null)
         }
     }
 
