@@ -141,7 +141,13 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
         object : WriteCommandAction<Unit>(project) {
             override fun run(result: Result<Unit>) {
-                bytecodeDocument.replaceString(0, bytecodeDocument.textLength, bytecodeTextBuilder!!.text)
+                movingCaretInBytecode = true
+                try {
+                    bytecodeDocument.replaceString(0, bytecodeDocument.textLength, bytecodeTextBuilder!!.text)
+                }
+                finally {
+                    movingCaretInBytecode = false
+                }
             }
         }.execute()
 
