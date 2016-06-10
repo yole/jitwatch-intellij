@@ -18,12 +18,12 @@ import org.adoptopenjdk.jitwatch.core.HotSpotLogParser
 import org.adoptopenjdk.jitwatch.core.IJITListener
 import org.adoptopenjdk.jitwatch.core.ILogParseErrorListener
 import org.adoptopenjdk.jitwatch.core.JITWatchConfig
-import org.adoptopenjdk.jitwatch.model.IMetaMember
-import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel
-import org.adoptopenjdk.jitwatch.model.JITEvent
-import org.adoptopenjdk.jitwatch.model.MetaClass
+import org.adoptopenjdk.jitwatch.core.JITWatchConstants.*
+import org.adoptopenjdk.jitwatch.model.*
 import org.adoptopenjdk.jitwatch.model.bytecode.*
 import org.adoptopenjdk.jitwatch.treevisitor.TreeVisitor
+import org.adoptopenjdk.jitwatch.util.ParseUtil
+import org.adoptopenjdk.jitwatch.util.StringUtil
 import ru.yole.jitwatch.languages.LanguageSupport
 import ru.yole.jitwatch.languages.forElement
 import ru.yole.jitwatch.languages.getAllSupportedLanguages
@@ -170,12 +170,40 @@ class JitWatchModelService(private val project: Project) {
     private fun buildAllBytecodeAnnotations(metaClass: MetaClass, target: MutableMap<IMetaMember, BytecodeAnnotations>) {
         for (metaMember in metaClass.metaMembers) {
             val annotations = try {
-                BytecodeAnnotationBuilder().buildBytecodeAnnotations(metaMember, model)
+                IJBytecodeAnnotationBuilder().buildBytecodeAnnotations(metaMember, model)
             } catch (e: Exception) {
                 LOG.error("Failed to build annotations", e)
                 continue
             }
             target[metaMember] = annotations
+        }
+    }
+
+    private class IJBytecodeAnnotationBuilder : BytecodeAnnotationBuilder() {
+        override fun buildInlineAnnotation(parseDictionary: IParseDictionary,
+                                           methodAttrs: MutableMap<String, String>,
+                                           callAttrs: MutableMap<String, String>,
+                                           reason: String,
+                                           inlined: Boolean): String {
+            val holder = methodAttrs[ATTR_HOLDER]
+            val methodName = methodAttrs[ATTR_NAME]
+            val calleeClass = ParseUtil.lookupType(holder, parseDictionary)
+            val calleeMethod = StringUtil.replaceXMLEntities(methodName)
+            val builder = StringBuilder(calleeClass)
+            builder.append(".").append(calleeMethod)
+            builder.append(if (inlined) " inlined " else " not inlined ")
+            builder.append("(").append(reason).append(")")
+
+            if (callAttrs.containsKey(ATTR_COUNT)) {
+                builder.append(". Count: ").append(callAttrs[ATTR_COUNT])
+            }
+            if (methodAttrs.containsKey(ATTR_IICOUNT)) {
+                builder.append(". iicount: ").append(methodAttrs[ATTR_IICOUNT])
+            }
+            if (methodAttrs.containsKey(ATTR_BYTES)) {
+                builder.append(". Bytes: ").append(methodAttrs[ATTR_BYTES])
+            }
+            return builder.toString()
         }
     }
 
