@@ -245,8 +245,10 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
                 val endOffset = bytecodeDocument.getLineStartOffset(endLine)
 
                 val color = EditorColorsManager.getInstance().globalScheme.getColor(EditorColors.CARET_ROW_COLOR)!!
+                val rangeColor = color.slightlyDarker()
+
                 lineRangeHighlighter = bytecodeEditor.markupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.CARET_ROW - 1,
-                        TextAttributes(null, color.darker(), null, null, 0), HighlighterTargetArea.LINES_IN_RANGE)
+                        TextAttributes(null, rangeColor, null, null, 0), HighlighterTargetArea.LINES_IN_RANGE)
             }
         }
     }
@@ -272,4 +274,11 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
             return toolWindow.contentManager.getContent(0)?.component as? JitToolWindow
         }
     }
+}
+
+private fun Color.slightlyDarker(): Color {
+    return Color(Math.max((red * 0.9).toInt(), 0),
+            Math.max((green * 0.9).toInt(), 0),
+            Math.max((blue * 0.9).toInt(), 0),
+            alpha)
 }
