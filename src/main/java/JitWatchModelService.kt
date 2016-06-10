@@ -44,6 +44,8 @@ class JitWatchModelService(private val project: Project) {
 
     val inlineFailures: List<InlineFailureInfo>
         get() = inlineAnalyzer?.failures.orEmpty()
+    val inlineFailureGroups: List<InlineFailureGroup>
+        get() = inlineAnalyzer?.failureGroups.orEmpty()
 
     fun addUpdateListener(listener: () -> Unit) {
         updateListeners.add(listener)

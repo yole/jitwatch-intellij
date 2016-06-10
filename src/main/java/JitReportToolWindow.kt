@@ -2,21 +2,34 @@ package ru.yole.jitwatch
 
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.ui.popup.PopupStep
+import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.psi.NavigatablePsiElement
+import com.intellij.ui.ColoredTableCellRenderer
+import com.intellij.ui.SimpleTextAttributes
+import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
+import org.adoptopenjdk.jitwatch.model.IMetaMember
 import java.awt.BorderLayout
+import java.awt.Cursor
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JPanel
+import javax.swing.JTable
+import kotlin.comparisons.compareBy
 
 class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
     private val modelService = JitWatchModelService.getInstance(project)
-    private val reportTable = TableView<InlineFailureInfo>()
-    private val reportTableModel = ListTableModel<InlineFailureInfo>(
-            CallSiteColumnInfo, CalleeColumnInfo, CalleeSizeColumnInfo, ReasonColumnInfo)
+    private val reportTable = TableView<InlineFailureGroup>()
+    private val reportTableModel = ListTableModel<InlineFailureGroup>(
+            CalleeColumnInfo, CalleeSizeColumnInfo, CalleeCountColumnInfo, CallSiteColumnInfo, ReasonColumnInfo
+    ).apply {
+        isSortable = true
+    }
 
     init {
         reportTable.setModelAndUpdateColumns(reportTableModel)
@@ -26,8 +39,14 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
 
         reportTable.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
-                if (e.button == MouseEvent.BUTTON1 && e.clickCount == 2) {
-                    navigateToSelectedCall()
+                val col = reportTable.convertColumnIndexToModel(reportTable.columnAtPoint(e.point))
+                val row = reportTable.convertRowIndexToModel(reportTable.rowAtPoint(e.point))
+                val failureGroup = reportTableModel.getItem(row)
+                if (e.button == MouseEvent.BUTTON1 && e.clickCount == 1) {
+                    when (col) {
+                        0 -> navigateToMember(failureGroup.callee)
+                        3 -> showCallSitesPopup(e, failureGroup.callSites)
+                    }
                 }
             }
         })
@@ -36,15 +55,14 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
     }
 
     private fun updateData() {
-        reportTableModel.items = modelService.inlineFailures
+        reportTableModel.items = modelService.inlineFailureGroups
     }
 
-    private fun navigateToSelectedCall() {
-        val failureInfo = reportTable.selectedObject ?: return
-        val psiMethod = JitWatchModelService.getInstance(project).getPsiMember(failureInfo.callSite) ?: return
-        val memberBC = failureInfo.callSite.memberBytecode
-        if (memberBC != null) {
-            val sourceLine = memberBC.lineTable.findSourceLineForBytecodeOffset(failureInfo.bci)
+    private fun navigateToMember(member: IMetaMember, bci: Int? = null) {
+        val psiMethod = JitWatchModelService.getInstance(project).getPsiMember(member) ?: return
+        val memberBC = member.memberBytecode
+        if (memberBC != null && bci != null) {
+            val sourceLine = memberBC.lineTable.findSourceLineForBytecodeOffset(bci)
             if (sourceLine != -1) {
                 OpenFileDescriptor(project, psiMethod.containingFile.virtualFile, sourceLine - 1, 0).navigate(true)
                 return
@@ -52,28 +70,61 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
         }
         (psiMethod as? NavigatablePsiElement)?.navigate(true)
     }
-}
 
-object CallSiteColumnInfo : ColumnInfo<InlineFailureInfo, String>("Call site") {
-    override fun valueOf(item: InlineFailureInfo): String? {
-        return item.callSite.fullyQualifiedMemberName
+    private fun showCallSitesPopup(e: MouseEvent, callSites: List<InlineCallSite>) {
+        val popupStep = object : BaseListPopupStep<InlineCallSite>("Call Sites", callSites) {
+            override fun getTextFor(value: InlineCallSite) = value.member.metaClass.name + "." + value.member.memberName
+
+            override fun onChosen(selectedValue: InlineCallSite?, finalChoice: Boolean): PopupStep<*>? {
+                if (selectedValue != null) {
+                    navigateToMember(selectedValue.member, selectedValue.bci)
+                }
+                return PopupStep.FINAL_CHOICE
+            }
+        }
+        JBPopupFactory.getInstance().createListPopup(popupStep).show(RelativePoint.fromScreen(e.locationOnScreen))
     }
 }
 
-object CalleeColumnInfo : ColumnInfo<InlineFailureInfo, String>("Callee") {
-    override fun valueOf(item: InlineFailureInfo): String? {
-        return item.callee.fullyQualifiedMemberName
+object CalleeColumnInfo : ColumnInfo<InlineFailureGroup, String>("Callee") {
+    override fun valueOf(item: InlineFailureGroup) = item.callee.fullyQualifiedMemberName
+
+    override fun getComparator() = compareBy<InlineFailureGroup> { it.callee.fullyQualifiedMemberName }
+
+    override fun getRenderer(item: InlineFailureGroup?) = LinkRenderer
+}
+
+object CalleeSizeColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Callee Size") {
+    override fun valueOf(item: InlineFailureGroup) = item.calleeSize
+
+    override fun getComparator() = compareBy<InlineFailureGroup> { it.calleeSize }
+}
+
+object CalleeCountColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Callee Invocations") {
+    override fun valueOf(item: InlineFailureGroup) = item.calleeInvocationCount
+
+    override fun getComparator() = compareBy<InlineFailureGroup> { it.calleeInvocationCount }
+}
+
+object CallSiteColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Call sites") {
+    override fun valueOf(item: InlineFailureGroup) = item.callSites.size
+
+    override fun getRenderer(item: InlineFailureGroup?) = LinkRenderer
+
+    override fun getComparator() = compareBy<InlineFailureGroup> { it.callSites.size }
+}
+
+object LinkRenderer : ColoredTableCellRenderer() {
+    override fun customizeCellRenderer(table: JTable?, value: Any?, selected: Boolean, hasFocus: Boolean, row: Int, column: Int) {
+        if (value != null) {
+            append(value.toString(), SimpleTextAttributes.LINK_ATTRIBUTES)
+        }
+        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
     }
 }
 
-object CalleeSizeColumnInfo : ColumnInfo<InlineFailureInfo, Int>("Callee Size") {
-    override fun valueOf(item: InlineFailureInfo): Int? {
-        return item.calleeSize
-    }
-}
-
-object ReasonColumnInfo : ColumnInfo<InlineFailureInfo, String>("Reason") {
-    override fun valueOf(item: InlineFailureInfo): String? {
-        return item.reason
+object ReasonColumnInfo : ColumnInfo<InlineFailureGroup, String>("Reason") {
+    override fun valueOf(item: InlineFailureGroup): String? {
+        return item.reasons.joinToString()
     }
 }
