@@ -86,8 +86,8 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
                         val metaMember = ParseUtil.lookupMember(methodID, parseDictionary, model)
                         if (metaMember != null && filter(metaMember)) {
                             failures.add(InlineFailureInfo(callSite, bci ?: currentBCI, metaMember,
-                                    method?.getAttribute(ATTR_BYTES)?.toInt() ?: -1,
-                                    method?.getAttribute(ATTR_IICOUNT)?.toInt(),
+                                    method?.attributes?.get(ATTR_BYTES)?.toInt() ?: -1,
+                                    method?.attributes?.get(ATTR_IICOUNT)?.toInt(),
                                     reason?.replace("&lt;", "<")?.replace("&gt;", ">") ?: "Unknown"))
                         }
 
