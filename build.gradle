@@ -4,7 +4,7 @@ buildscript {
         maven { url 'http://dl.bintray.com/jetbrains/intellij-plugin-service' }
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.0.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.0.3"
     }
 }
 
@@ -26,14 +26,14 @@ repositories {
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.2"
-    compile "org.jetbrains.kotlin:kotlin-reflect:1.0.2"
+    compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.3"
+    compile "org.jetbrains.kotlin:kotlin-reflect:1.0.3"
     compile 'com.github.yole.jitwatch:core:ce8391b'
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
 
 intellij {
-    plugins = ['org.jetbrains.kotlin:1.0.2-release-IJ145-10']
+    plugins = ['org.jetbrains.kotlin:1.0.3-release-IJ2016.1-103']
 }
 
 project.afterEvaluate {
