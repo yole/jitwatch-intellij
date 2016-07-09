@@ -20,7 +20,7 @@ class LoadLogAction : AnAction() {
         registerToolWindows(project)
 
         JitWatchModelService.getInstance(project).loadLog(File(logFile.path)) {
-            ToolWindowManager.getInstance(project).getToolWindow("JitWatch Report").activate(null)
+            ToolWindowManager.getInstance(project).getToolWindow("JITWatch Report").activate(null)
         }
     }
 
@@ -28,20 +28,21 @@ class LoadLogAction : AnAction() {
         e.presentation.isEnabled = e.project != null
     }
 
-    private fun registerToolWindows(project: Project) {
-        val toolWindowManager = ToolWindowManager.getInstance(project)
-        val existingToolWindow = toolWindowManager.getToolWindow("JitWatch")
-        if (existingToolWindow == null) {
-            val jitWatchToolWindow = toolWindowManager.registerToolWindow("JitWatch", false, ToolWindowAnchor.RIGHT, project, true)
-            jitWatchToolWindow.contentManager.addContent(
-                    ContentFactory.SERVICE.getInstance().createContent(JitToolWindow(project), "", false)
-            )
+}
 
-            val reportToolWindow = toolWindowManager.registerToolWindow("JitWatch Report", false, ToolWindowAnchor.BOTTOM, project, true)
-            reportToolWindow.contentManager.addContent(
-                    ContentFactory.SERVICE.getInstance().createContent(JitReportToolWindow(project), "", false)
-            )
-        }
+fun registerToolWindows(project: Project) {
+    val toolWindowManager = ToolWindowManager.getInstance(project)
+    val existingToolWindow = JitToolWindow.getToolWindow(project)
+    if (existingToolWindow == null) {
+        val jitWatchToolWindow = toolWindowManager.registerToolWindow(JitToolWindow.ID, false, ToolWindowAnchor.RIGHT, project, true)
+        jitWatchToolWindow.contentManager.addContent(
+                ContentFactory.SERVICE.getInstance().createContent(JitToolWindow(project), "", false)
+        )
+
+        val reportToolWindow = toolWindowManager.registerToolWindow("JITWatch Report", false, ToolWindowAnchor.BOTTOM, project, true)
+        reportToolWindow.contentManager.addContent(
+                ContentFactory.SERVICE.getInstance().createContent(JitReportToolWindow(project), "", false)
+        )
     }
 }
 

@@ -20,6 +20,7 @@ import com.intellij.openapi.fileEditor.*
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -269,10 +270,13 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
     }
 
     companion object {
-        fun getInstance(project: Project): JitToolWindow? {
-            val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("JitWatch") ?: return null
-            return toolWindow.contentManager.getContent(0)?.component as? JitToolWindow
-        }
+        fun getToolWindow(project: Project): ToolWindow? =
+            ToolWindowManager.getInstance(project).getToolWindow(ID)
+
+        fun getInstance(project: Project): JitToolWindow? =
+            getToolWindow(project)?.contentManager?.getContent(0)?.component as? JitToolWindow
+
+        const val ID = "JITWatch"
     }
 }
 

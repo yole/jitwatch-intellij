@@ -49,7 +49,7 @@ class JitRunConfigurationExtension : RunConfigurationExtension() {
         JitWatchSettings.clear(runConfigurationBase)
     }
 
-    override fun getEditorTitle() = "JitWatch"
+    override fun getEditorTitle() = "JITWatch"
 
     override fun isApplicableFor(configuration: RunConfigurationBase) = configuration is CommonJavaRunConfigurationParameters
 
@@ -86,6 +86,7 @@ class JitRunConfigurationExtension : RunConfigurationExtension() {
             handler.addProcessListener(object : ProcessAdapter() {
                 override fun processTerminated(event: ProcessEvent?) {
                     ApplicationManager.getApplication().invokeLater {
+                        registerToolWindows(configuration.project)
                         JitWatchModelService.getInstance(configuration.project).loadLog(logPath)
                     }
                 }

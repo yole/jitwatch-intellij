@@ -41,7 +41,7 @@ class JitLineMarkerProvider : LineMarkerProvider {
                 Pass.UPDATE_ALL,
                 { method -> buildCompiledTooltip(metaMember) },
                 { e, elt ->
-                    ToolWindowManager.getInstance(method.project).getToolWindow("JitWatch").activate {
+                    JitToolWindow.getToolWindow(method.project)?.activate {
                         JitToolWindow.getInstance(method.project)?.navigateToMember(elt)
                     }
                 },
