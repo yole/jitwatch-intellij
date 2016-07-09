@@ -28,7 +28,7 @@ fun loadLogAndShowUI(project: Project, logFile: File) {
    registerToolWindows(project)
 
     JitWatchModelService.getInstance(project).loadLog(File(logFile.path)) {
-        ToolWindowManager.getInstance(project).getToolWindow("JITWatch Report").activate(null)
+        ToolWindowManager.getInstance(project).getToolWindow(JitReportToolWindow.ID).activate(null)
     }
 }
 
@@ -41,7 +41,7 @@ fun registerToolWindows(project: Project) {
                 ContentFactory.SERVICE.getInstance().createContent(JitToolWindow(project), "", false)
         )
 
-        val reportToolWindow = toolWindowManager.registerToolWindow("JITWatch Report", false, ToolWindowAnchor.BOTTOM, project, true)
+        val reportToolWindow = toolWindowManager.registerToolWindow(JitReportToolWindow.ID, false, ToolWindowAnchor.BOTTOM, project, true)
         reportToolWindow.contentManager.addContent(
                 ContentFactory.SERVICE.getInstance().createContent(JitReportToolWindow(project), "", false)
         )
@@ -52,6 +52,10 @@ class CloseLogAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         JitWatchModelService.getInstance(project).closeLog()
+
+        val toolWindowManager = ToolWindowManager.getInstance(project)
+        toolWindowManager.unregisterToolWindow(JitToolWindow.ID)
+        toolWindowManager.unregisterToolWindow(JitReportToolWindow.ID)
     }
 
     override fun update(e: AnActionEvent) {

@@ -84,6 +84,10 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
         }
         JBPopupFactory.getInstance().createListPopup(popupStep).show(RelativePoint.fromScreen(e.locationOnScreen))
     }
+
+    companion object {
+        const val ID = "JITWatch Report"
+    }
 }
 
 object CalleeColumnInfo : ColumnInfo<InlineFailureGroup, String>("Callee") {
