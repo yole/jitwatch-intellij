@@ -16,18 +16,20 @@ class LoadLogAction : AnAction() {
         val fileChooserDescriptor = FileChooserDescriptor(true, false, false, false, false, false)
         val fileChooser = FileChooserFactory.getInstance().createFileChooser(fileChooserDescriptor, project, null)
         val logFile = fileChooser.choose(project).singleOrNull() ?: return
-
-        registerToolWindows(project)
-
-        JitWatchModelService.getInstance(project).loadLog(File(logFile.path)) {
-            ToolWindowManager.getInstance(project).getToolWindow("JITWatch Report").activate(null)
-        }
+        loadLogAndShowUI(project, File(logFile.path))
     }
 
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabled = e.project != null
     }
+}
 
+fun loadLogAndShowUI(project: Project, logFile: File) {
+   registerToolWindows(project)
+
+    JitWatchModelService.getInstance(project).loadLog(File(logFile.path)) {
+        ToolWindowManager.getInstance(project).getToolWindow("JITWatch Report").activate(null)
+    }
 }
 
 fun registerToolWindows(project: Project) {

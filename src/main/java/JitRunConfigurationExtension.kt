@@ -12,6 +12,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.wm.ToolWindowManager
 import org.jdom.Element
 import java.awt.BorderLayout
 import java.io.File
@@ -86,8 +87,7 @@ class JitRunConfigurationExtension : RunConfigurationExtension() {
             handler.addProcessListener(object : ProcessAdapter() {
                 override fun processTerminated(event: ProcessEvent?) {
                     ApplicationManager.getApplication().invokeLater {
-                        registerToolWindows(configuration.project)
-                        JitWatchModelService.getInstance(configuration.project).loadLog(logPath)
+                        loadLogAndShowUI(configuration.project, logPath)
                     }
                 }
             })
