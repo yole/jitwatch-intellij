@@ -1,5 +1,8 @@
 package ru.yole.jitwatch
 
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
@@ -27,8 +30,17 @@ class LoadLogAction : AnAction() {
 fun loadLogAndShowUI(project: Project, logFile: File) {
    registerToolWindows(project)
 
-    JitWatchModelService.getInstance(project).loadLog(File(logFile.path)) {
-        ToolWindowManager.getInstance(project).getToolWindow(JitReportToolWindow.ID).activate(null)
+    JitWatchModelService.getInstance(project).loadLog(File(logFile.path)) { errors ->
+        if (!errors.isEmpty()) {
+            Notifications.Bus.notify(
+                    Notification("JitWatch",
+                            "Log parse failed",
+                            errors.first().first,
+                            NotificationType.ERROR))
+
+        } else {
+            ToolWindowManager.getInstance(project).getToolWindow(JitReportToolWindow.ID).activate(null)
+        }
     }
 }
 

@@ -51,7 +51,7 @@ class JitWatchModelService(private val project: Project) {
         updateListeners.add(listener)
     }
 
-    fun loadLog(logFile: File, callback: () -> Unit = {}) {
+    fun loadLog(logFile: File, callback: (List<Pair<String, String>>) -> Unit = {}) {
         bytecodeAnnotations.clear()
 
         val jitListener = object : IJITListener {
@@ -91,7 +91,7 @@ class JitWatchModelService(private val project: Project) {
 
                 SwingUtilities.invokeLater {
                     modelUpdated()
-                    callback()
+                    callback(parseErrors)
                 }
             }
         })
