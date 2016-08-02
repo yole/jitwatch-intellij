@@ -7,6 +7,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.fileChooser.FileChooserFactory
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowAnchor
 import com.intellij.openapi.wm.ToolWindowManager
@@ -30,7 +31,7 @@ class LoadLogAction : AnAction() {
 fun loadLogAndShowUI(project: Project, logFile: File) {
    registerToolWindows(project)
 
-    JitWatchModelService.getInstance(project).loadLog(File(logFile.path)) { errors ->
+    JitWatchModelService.getInstance(project).loadLog(logFile) { errors ->
         if (!errors.isEmpty()) {
             Notifications.Bus.notify(
                     Notification("JitWatch",
@@ -60,7 +61,7 @@ fun registerToolWindows(project: Project) {
     }
 }
 
-class CloseLogAction : AnAction() {
+class CloseLogAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         JitWatchModelService.getInstance(project).closeLog()
