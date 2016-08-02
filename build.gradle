@@ -33,6 +33,7 @@ dependencies {
 }
 
 intellij {
+    version 'IC-2016.2'
     plugins = ['org.jetbrains.kotlin:1.0.3-release-IJ2016.1-103']
 }
 
