@@ -75,7 +75,7 @@ class JitRunConfigurationExtension : RunConfigurationExtension() {
             val vmOptions = params.vmParametersList
             vmOptions.add("-XX:+UnlockDiagnosticVMOptions")
             vmOptions.add("-XX:+TraceClassLoading")
-            vmOptions.add("-XX:+PrintCompilation")
+            vmOptions.add("-XX:+LogCompilation")
             vmOptions.add("-XX:LogFile=" + logPath.absolutePath)
             settings.lastLogPath = logPath
         }
