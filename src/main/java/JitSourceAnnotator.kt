@@ -30,6 +30,7 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
     override fun doAnnotate(psiFile: PsiFile?): List<Pair<PsiElement, LineAnnotation>>? {
         if (psiFile == null) return null
         val service = JitWatchModelService.getInstance(psiFile.project)
+        if (service.model == null) return null
         service.loadBytecode(psiFile)
         return ApplicationManager.getApplication().runReadAction(Computable {
             mapBytecodeAnnotationsToSource(psiFile)
