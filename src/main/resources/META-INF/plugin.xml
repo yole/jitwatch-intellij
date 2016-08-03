@@ -2,11 +2,12 @@
     <id>ru.yole.jitwatch-intellij</id>
     <name>JITWatch</name>
     
-    <vendor url="http://yole.ru">Dmitry Jemerov</vendor>
+    <vendor url="https://github.com/yole/jitwatch-intellij">Dmitry Jemerov</vendor>
     
     <description><![CDATA[
-        Viewing HotSpot compilation logs in IntelliJ IDEA    
+        Viewing HotSpot compilation logs in IntelliJ IDEA. See <a href="https://github.com/yole/jitwatch-intellij">GitHub</a> for documentation.
     ]]></description>
+    <version>1.0</version>
     
     <idea-version since-build="145.1"/>
 
