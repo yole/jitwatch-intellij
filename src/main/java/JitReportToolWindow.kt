@@ -39,8 +39,12 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
 
         reportTable.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
-                val col = reportTable.convertColumnIndexToModel(reportTable.columnAtPoint(e.point))
-                val row = reportTable.convertRowIndexToModel(reportTable.rowAtPoint(e.point))
+                val columnAtPoint = reportTable.columnAtPoint(e.point)
+                val rowAtPoint = reportTable.rowAtPoint(e.point)
+                if (columnAtPoint < 0 || rowAtPoint < 0) return
+
+                val col = reportTable.convertColumnIndexToModel(columnAtPoint)
+                val row = reportTable.convertRowIndexToModel(rowAtPoint)
                 val failureGroup = reportTableModel.getItem(row)
                 if (e.button == MouseEvent.BUTTON1 && e.clickCount == 1) {
                     when (col) {
