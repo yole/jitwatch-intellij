@@ -209,7 +209,8 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         val languageSupport = LanguageSupport.forLanguage(sourceFile.language)
         val methodAtCaret = languageSupport.findMethodAtOffset(sourceFile, caretOffset) ?: return
         val metaMember = modelService.getMetaMember(methodAtCaret) ?: return
-        val lineTableEntry = metaMember.memberBytecode.lineTable.getEntryForSourceLine(caretPosition.line + 1) ?: return
+        val lineTable = metaMember.memberBytecode?.lineTable ?: return
+        val lineTableEntry = lineTable.getEntryForSourceLine(caretPosition.line + 1) ?: return
         val bytecodeLine = bytecodeTextBuilder?.findLine(metaMember, lineTableEntry.bytecodeOffset) ?: return
         movingCaretInBytecode = true
         try {
@@ -222,7 +223,8 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
     private fun syncEditorToBytecode(caretPosition: LogicalPosition) {
         val (member, instruction) = bytecodeTextBuilder?.findInstruction(caretPosition.line) ?: return
-        val sourceLine = member.memberBytecode.lineTable.findSourceLineForBytecodeOffset(instruction?.offset ?: 0)
+        val lineTable = member.memberBytecode?.lineTable ?: return
+        val sourceLine = lineTable.findSourceLineForBytecodeOffset(instruction?.offset ?: 0)
         if (sourceLine != -1) {
             movingCaretInSource = true
             try {
