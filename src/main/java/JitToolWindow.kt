@@ -161,7 +161,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
         modelService.processBytecodeAnnotations(psiFile) { method, member, memberBytecode, instruction, annotationsForBCI ->
             val line = bytecodeTextBuilder!!.findLine(member, instruction.offset) ?: return@processBytecodeAnnotations
-            val color = getColorForBytecodeAnnotation(annotationsForBCI.first().type)
+            val color = annotationsForBCI.mapNotNull { getColorForBytecodeAnnotation(it.type) }.firstOrNull()
             highlightBytecodeLine(line, color,
                     annotationsForBCI.joinToString(separator = "\n") { it.annotation },
                     markupModel)
@@ -170,7 +170,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
     private fun getColorForBytecodeAnnotation(type: BCAnnotationType): Color? = when(type) {
         BCAnnotationType.BRANCH -> JBColor.BLUE
-        BCAnnotationType.ELIMINATED_ALLOCATION -> JBColor.GRAY
+        BCAnnotationType.ELIMINATED_ALLOCATION, BCAnnotationType.LOCK_COARSEN, BCAnnotationType.LOCK_ELISION -> JBColor.GRAY
         BCAnnotationType.INLINE_FAIL -> JBColor.RED
         BCAnnotationType.INLINE_SUCCESS -> JBColor.GREEN.darker().darker()
         BCAnnotationType.UNCOMMON_TRAP -> JBColor.MAGENTA
