@@ -4,16 +4,21 @@ import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.projectRoots.JavaSdk
 import com.intellij.openapi.roots.CompilerModuleExtension
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.util.Computable
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.util.containers.isNullOrEmpty
+import com.intellij.util.isFile
 import org.adoptopenjdk.jitwatch.core.HotSpotLogParser
 import org.adoptopenjdk.jitwatch.core.IJITListener
 import org.adoptopenjdk.jitwatch.core.ILogParseErrorListener
@@ -29,6 +34,8 @@ import ru.yole.jitwatch.languages.forElement
 import ru.yole.jitwatch.languages.getAllSupportedLanguages
 import ru.yole.jitwatch.languages.matchesSignature
 import java.io.File
+import java.nio.file.Path
+import java.nio.file.Paths
 import javax.swing.SwingUtilities
 
 class JitWatchModelService(private val project: Project) {
@@ -156,15 +163,26 @@ class JitWatchModelService(private val project: Project) {
         val module = ModuleUtil.findModuleForPsiElement(file) ?: return
         val outputRoots = CompilerModuleExtension.getInstance(module)!!.getOutputRoots(true)
                 .map { it.canonicalPath }
+        val javapPath = findJavapPath(module)
 
         val allClasses = LanguageSupport.forElement(file).getAllClasses(file)
         for (cls in allClasses) {
             val memberAnnotations = hashMapOf<IMetaMember, BytecodeAnnotations>()
             val metaClass = ApplicationManager.getApplication().runReadAction(Computable { getMetaClass(cls) }) ?: continue
-            metaClass.getClassBytecode(JitWatchModelService.getInstance(project).model, outputRoots)
+            metaClass.getClassBytecode(JitWatchModelService.getInstance(project).model, outputRoots, javapPath)
             buildAllBytecodeAnnotations(metaClass, memberAnnotations)
             bytecodeAnnotations[metaClass] = memberAnnotations
         }
+    }
+
+    private fun findJavapPath(module: Module): Path? {
+        val sdk = ModuleRootManager.getInstance(module).sdk ?: return null
+        val javaSdk = JavaSdk.getInstance()
+        if (sdk.sdkType != javaSdk) return null
+        val binPath = javaSdk.getBinPath(sdk)
+        val exeName = if (SystemInfo.isWindows) "javap.exe" else "javap"
+        val result = Paths.get(binPath, exeName)
+        return if (result.isFile()) result else null
     }
 
     private fun buildAllBytecodeAnnotations(metaClass: MetaClass, target: MutableMap<IMetaMember, BytecodeAnnotations>) {
