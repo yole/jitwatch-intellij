@@ -3,6 +3,10 @@
 The plugin can be used to view and analyze HotSpot JIT compilation logs inside IntelliJ IDEA.
 It uses [JITWatch](https://github.com/AdoptOpenJDK/jitwatch) to load and analyze the logs and provides a UI for exploring the compilation data directly in your code editor.
 
+## Video Demo
+
+[Here](https://www.youtube.com/watch?v=4W-MhGBJsFI) is a video of a demo of the JITWatch plugin, recorded at the JVM Language Summit 2016.
+
 ## Creating and Loading the Compilation Log
 
 The simple option for creating and loading the compilation log is to enable the "Log compilation" option in the "JITWatch" tab of the run configuration settings.
