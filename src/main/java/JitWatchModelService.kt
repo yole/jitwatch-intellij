@@ -207,7 +207,7 @@ class JitWatchModelService(private val project: Project) {
             val methodName = methodAttrs[ATTR_NAME]
             val calleeClass = ParseUtil.lookupType(holder, parseDictionary)
             val calleeMethod = StringUtil.replaceXMLEntities(methodName)
-            val builder = StringBuilder(calleeClass)
+            val builder = StringBuilder(calleeClass ?: "<unknown>")
             builder.append(".").append(calleeMethod)
             builder.append(if (inlined) " inlined " else " not inlined ")
             builder.append("(").append(reason).append(")")
