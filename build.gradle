@@ -4,19 +4,19 @@ buildscript {
         maven { url 'http://dl.bintray.com/jetbrains/intellij-plugin-service' }
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.0.3"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.31"
     }
 }
 
 plugins {
-    id "org.jetbrains.intellij" version "0.1.6"
+    id "org.jetbrains.intellij" version "0.4.8"
+    id "java"
+    id ("org.jetbrains.kotlin.jvm") version "1.3.31"
 }
 
 group 'ru.yole'
 version '1.0'
 
-apply plugin: 'java'
-apply plugin: 'kotlin'
 
 sourceCompatibility = 1.5
 
@@ -35,13 +35,14 @@ dependencies {
 intellij {
     version 'IC-2016.2'
     plugins = ['org.jetbrains.kotlin:1.0.3-release-IJ2016.1-103']
-
-    publish {
-        username System.getenv('JETBRAINS_USER')
-        password System.getenv('JETBRAINS_PASSWORD')
-    }
 }
 
+publishPlugin {
+    username System.getenv('JETBRAINS_USER')
+    password System.getenv('JETBRAINS_PASSWORD')
+}
+
+
 project.afterEvaluate {
-    project.tasks.runIdea.maxHeapSize = "2048m"
+    project.tasks.runIde.maxHeapSize = "2048m"
 }
