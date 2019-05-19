@@ -5,6 +5,7 @@ buildscript {
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.31"
+        classpath "net.saliman:gradle-properties-plugin:1.4.6"
     }
 }
 
@@ -12,6 +13,7 @@ plugins {
     id "org.jetbrains.intellij" version "0.4.8"
     id "java"
     id ("org.jetbrains.kotlin.jvm") version "1.3.31"
+    id "net.saliman.properties" version "1.4.6"
 }
 
 group 'ru.yole'
@@ -33,8 +35,23 @@ dependencies {
 }
 
 intellij {
-    version 'IC-2018.1'
-    plugins = ['org.jetbrains.kotlin:1.3.31-release-IJ2018.1-1']
+    version "$ideaVersion"
+    plugins = ["org.jetbrains.kotlin:$kotlinPluginVersion"]
+}
+
+// Read sinceBuild/untilBuild from gradle-$platformVersion.properties
+patchPluginXml.sinceBuild = sinceBuild
+patchPluginXml.untilBuild = untilBuild
+
+sourceSets {
+    main {
+        for (String platformSpecificSrcDir : "$platformSpecificSrcDirs".split(",")) {
+            if (!platformSpecificSrcDir.isEmpty()) {
+                // prevent empty platformSpecificSrcDirs entries from doing anything
+                java.srcDirs("src/$platformSpecificSrcDir/java")
+            }
+        }
+    }
 }
 
 publishPlugin {
