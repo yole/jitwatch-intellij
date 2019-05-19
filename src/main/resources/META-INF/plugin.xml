@@ -7,7 +7,15 @@
     <description><![CDATA[
         Viewing HotSpot compilation logs in IntelliJ IDEA. See <a href="https://github.com/yole/jitwatch-intellij">GitHub</a> for documentation.
     ]]></description>
-    <version>1.0</version>
+    <version>1.0.1</version>
+    <change-notes>
+        <![CDATA[
+        <b>Version 1.0.1</b>
+        <ul>
+            <li>Compatibility with IntelliJ 2018.1 and later</li>
+        </ul>
+        ]]>
+    </change-notes>
     
     <idea-version since-build="181"/>
 
