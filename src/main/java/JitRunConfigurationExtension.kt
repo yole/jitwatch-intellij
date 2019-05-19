@@ -85,7 +85,7 @@ class JitRunConfigurationExtension : RunConfigurationExtension() {
         val logPath = JitWatchSettings.getOrCreate(configuration).lastLogPath
         if (logPath != null) {
             handler.addProcessListener(object : ProcessAdapter() {
-                override fun processTerminated(event: ProcessEvent?) {
+                override fun processTerminated(event: ProcessEvent) {
                     ApplicationManager.getApplication().invokeLater {
                         loadLogAndShowUI(configuration.project, logPath)
                     }
