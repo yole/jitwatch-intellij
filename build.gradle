@@ -54,6 +54,10 @@ sourceSets {
     }
 }
 
+runIde{
+    args "${project.projectDir}/test-project"
+}
+
 publishPlugin {
     username System.getenv('JETBRAINS_USER')
     password System.getenv('JETBRAINS_PASSWORD')
