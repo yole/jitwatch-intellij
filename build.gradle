@@ -19,6 +19,7 @@ plugins {
 group 'ru.yole'
 version "${pluginVersion}-${platformVersion}"
 
+def isAtLeast192 = platformVersion.toInteger() >= 192
 
 sourceCompatibility = 1.5
 
@@ -36,10 +37,10 @@ dependencies {
 
 intellij {
     version "$ideaVersion"
-    plugins = [
-            "java",
-            "org.jetbrains.kotlin:$kotlinPluginVersion"
-    ]
+    if (isAtLeast192) {
+        plugins += "java"
+    }
+    plugins += "org.jetbrains.kotlin:$kotlinPluginVersion"
 }
 
 // Read sinceBuild/untilBuild from gradle-$platformVersion.properties
