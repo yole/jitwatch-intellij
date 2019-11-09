@@ -42,6 +42,7 @@ intellij {
 // Read sinceBuild/untilBuild from gradle-$platformVersion.properties
 patchPluginXml.sinceBuild = sinceBuild
 patchPluginXml.untilBuild = untilBuild
+patchPluginXml.version = "${pluginVersion}"
 
 sourceSets {
     main {
