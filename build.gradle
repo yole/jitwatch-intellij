@@ -17,7 +17,7 @@ plugins {
 }
 
 group 'ru.yole'
-version '1.0'
+version "${pluginVersion}-${platformVersion}"
 
 
 sourceCompatibility = 1.5
@@ -45,7 +45,6 @@ intellij {
 // Read sinceBuild/untilBuild from gradle-$platformVersion.properties
 patchPluginXml.sinceBuild = sinceBuild
 patchPluginXml.untilBuild = untilBuild
-patchPluginXml.version = "${pluginVersion}"
 
 sourceSets {
     main {
