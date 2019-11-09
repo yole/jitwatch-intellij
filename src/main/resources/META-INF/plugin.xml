@@ -9,6 +9,11 @@
     ]]></description>
     <change-notes>
         <![CDATA[
+        <b>Version 1.0.2</b>
+        <ul>
+            <li>Compatibility with IntelliJ 2019.2 and later</li>
+            <li>Minimum IntelliJ Version raised to 2019.2</li>
+        </ul>
         <b>Version 1.0.1</b>
         <ul>
             <li>Compatibility with IntelliJ 2018.1 and later</li>

@@ -59,11 +59,11 @@ class JitWatchKotlinSupport : JitWatchLanguageSupport<KtClassOrObject, KtCallabl
         val typeMapper = KotlinTypeMapper(
                 BindingContext.EMPTY,
                 ClassBuilderMode.LIGHT_CLASSES,
-                IncompatibleClassTracker.DoNothing,
                 getModuleName(descriptor),
-                // FIXME Figure out how to properly choose JvmTarget
-                JvmTarget.JVM_1_8,
                 KotlinTypeMapper.LANGUAGE_VERSION_SETTINGS_DEFAULT,
+                // FIXME Figure out how to properly choose JvmTarget
+                IncompatibleClassTracker.DoNothing,
+                JvmTarget.JVM_1_8,
                 false // FIXME what significance does this have?
         )
         return typeMapper.mapClass(descriptor).internalName.replace('/', '.')
@@ -87,11 +87,11 @@ class JitWatchKotlinSupport : JitWatchLanguageSupport<KtClassOrObject, KtCallabl
         val typeMapper = KotlinTypeMapper(
                 BindingContext.EMPTY,
                 ClassBuilderMode.LIGHT_CLASSES,
-                IncompatibleClassTracker.DoNothing,
                 getModuleName(descriptor),
-                // FIXME Figure out how to properly choose JvmTarget
-                JvmTarget.JVM_1_8,
                 KotlinTypeMapper.LANGUAGE_VERSION_SETTINGS_DEFAULT,
+                // FIXME Figure out how to properly choose JvmTarget
+                IncompatibleClassTracker.DoNothing,
+                JvmTarget.JVM_1_8,
                 false // FIXME what significance does this have?
         )
         val signature = typeMapper.mapAsmMethod(descriptor)

@@ -37,6 +37,7 @@ dependencies {
 intellij {
     version "$ideaVersion"
     plugins = [
+            "java",
             "org.jetbrains.kotlin:$kotlinPluginVersion"
     ]
 }
