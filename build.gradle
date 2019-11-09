@@ -36,7 +36,9 @@ dependencies {
 
 intellij {
     version "$ideaVersion"
-    plugins = ["org.jetbrains.kotlin:$kotlinPluginVersion"]
+    plugins = [
+            "org.jetbrains.kotlin:$kotlinPluginVersion"
+    ]
 }
 
 // Read sinceBuild/untilBuild from gradle-$platformVersion.properties
