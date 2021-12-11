@@ -18,7 +18,6 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.util.containers.isNullOrEmpty
-import com.intellij.util.isFile
 import org.adoptopenjdk.jitwatch.core.HotSpotLogParser
 import org.adoptopenjdk.jitwatch.core.IJITListener
 import org.adoptopenjdk.jitwatch.core.ILogParseErrorListener
@@ -34,6 +33,7 @@ import ru.yole.jitwatch.languages.forElement
 import ru.yole.jitwatch.languages.getAllSupportedLanguages
 import ru.yole.jitwatch.languages.matchesSignature
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import javax.swing.SwingUtilities
@@ -182,7 +182,7 @@ class JitWatchModelService(private val project: Project) {
         val binPath = javaSdk.getBinPath(sdk)
         val exeName = if (SystemInfo.isWindows) "javap.exe" else "javap"
         val result = Paths.get(binPath, exeName)
-        return if (result.isFile()) result else null
+        return if (Files.isRegularFile(result)) result else null
     }
 
     private fun buildAllBytecodeAnnotations(metaClass: MetaClass, target: MutableMap<IMetaMember, BytecodeAnnotations>) {

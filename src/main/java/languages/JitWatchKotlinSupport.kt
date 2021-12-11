@@ -5,22 +5,20 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
+import com.intellij.psi.search.ProjectScope
 import com.intellij.psi.util.PsiTreeUtil
 import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
 import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.jetbrains.kotlin.codegen.ClassBuilderMode
 import org.jetbrains.kotlin.codegen.state.IncompatibleClassTracker
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper
-import org.jetbrains.kotlin.descriptors.CallableDescriptor
-import org.jetbrains.kotlin.descriptors.ClassDescriptor
-import org.jetbrains.kotlin.descriptors.ConstructorDescriptor
-import org.jetbrains.kotlin.descriptors.FunctionDescriptor
-import org.jetbrains.kotlin.fileClasses.NoResolveFileClassesProvider
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptor
 import org.jetbrains.kotlin.idea.search.allScope
 import org.jetbrains.kotlin.idea.stubindex.KotlinFullClassNameIndex
 import org.jetbrains.kotlin.load.java.JvmAbi
+import org.jetbrains.kotlin.metadata.jvm.deserialization.JvmProtoBufUtil
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 import org.jetbrains.kotlin.resolve.BindingContext
@@ -35,7 +33,7 @@ class JitWatchKotlinSupport : JitWatchLanguageSupport<KtClassOrObject, KtCallabl
             })
 
     override fun findClass(project: Project, metaClass: MetaClass): KtClassOrObject? {
-        return KotlinFullClassNameIndex.getInstance().get(metaClass.fullyQualifiedName, project, project.allScope()).firstOrNull()
+        return KotlinFullClassNameIndex.getInstance().get(metaClass.fullyQualifiedName, project, ProjectScope.getAllScope(project)).firstOrNull()
     }
 
     override fun getAllMethods(cls: KtClassOrObject): List<KtCallableDeclaration> =
@@ -56,9 +54,13 @@ class JitWatchKotlinSupport : JitWatchLanguageSupport<KtClassOrObject, KtCallabl
         return getClassDescriptorVMName(descriptor)
     }
 
-    private fun getClassDescriptorVMName(descriptor: ClassDescriptor): String {
-        val typeMapper = KotlinTypeMapper(BindingContext.EMPTY, ClassBuilderMode.LIGHT_CLASSES, NoResolveFileClassesProvider, null,
-                IncompatibleClassTracker.DoNothing, JvmAbi.DEFAULT_MODULE_NAME)
+    private fun getClassDescriptorVMName(descriptor: ClassifierDescriptorWithTypeParameters): String {
+        val typeMapper = KotlinTypeMapper(
+            BindingContext.EMPTY,
+            ClassBuilderMode.LIGHT_CLASSES,
+            JvmProtoBufUtil.DEFAULT_MODULE_NAME,
+            KotlinTypeMapper.LANGUAGE_VERSION_SETTINGS_DEFAULT,
+            false)
         return typeMapper.mapClass(descriptor).internalName.replace('/', '.')
     }
 
@@ -73,8 +75,12 @@ class JitWatchKotlinSupport : JitWatchLanguageSupport<KtClassOrObject, KtCallabl
     }
 
     private fun matchesSignature(descriptor: FunctionDescriptor, memberName: String, paramTypeNames: List<String>, returnTypeName: String): Boolean {
-        val typeMapper = KotlinTypeMapper(BindingContext.EMPTY, ClassBuilderMode.LIGHT_CLASSES, NoResolveFileClassesProvider, null,
-                IncompatibleClassTracker.DoNothing, JvmAbi.DEFAULT_MODULE_NAME)
+        val typeMapper = KotlinTypeMapper(
+            BindingContext.EMPTY,
+            ClassBuilderMode.LIGHT_CLASSES,
+            JvmProtoBufUtil.DEFAULT_MODULE_NAME,
+            KotlinTypeMapper.LANGUAGE_VERSION_SETTINGS_DEFAULT,
+            false)
         val signature = typeMapper.mapAsmMethod(descriptor)
 
         val expectedName = if (descriptor is ConstructorDescriptor)

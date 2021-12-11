@@ -5,7 +5,6 @@ import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.editor.markup.GutterIconRenderer
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiElement
 import org.adoptopenjdk.jitwatch.model.IMetaMember
 import ru.yole.jitwatch.languages.DefaultJitLanguageSupport
@@ -61,6 +60,11 @@ class JitLineMarkerProvider : LineMarkerProvider {
         return message
     }
 
-    override fun collectSlowLineMarkers(elements: MutableList<PsiElement>, result: MutableCollection<LineMarkerInfo<PsiElement>>) {
+
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        super.collectSlowLineMarkers(elements, result)
     }
 }

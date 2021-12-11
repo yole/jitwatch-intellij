@@ -3,7 +3,6 @@ package ru.yole.jitwatch
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.Result
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
@@ -11,8 +10,8 @@ import com.intellij.openapi.editor.LogicalPosition
 import com.intellij.openapi.editor.ScrollType
 import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
-import com.intellij.openapi.editor.event.CaretAdapter
 import com.intellij.openapi.editor.event.CaretEvent
+import com.intellij.openapi.editor.event.CaretListener
 import com.intellij.openapi.editor.ex.RangeHighlighterEx
 import com.intellij.openapi.editor.impl.DocumentMarkupModel
 import com.intellij.openapi.editor.markup.*
@@ -61,20 +60,20 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
     private var movingCaretInBytecode = false
 
     init {
-        project.messageBus.connect(this).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerAdapter() {
+        project.messageBus.connect(this).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
             override fun selectionChanged(event: FileEditorManagerEvent) {
                 updateContent(event.newFile, event.newEditor)
             }
         })
 
-        EditorFactory.getInstance().eventMulticaster.addCaretListener(object : CaretAdapter() {
+        EditorFactory.getInstance().eventMulticaster.addCaretListener(object : CaretListener {
             override fun caretPositionChanged(e: CaretEvent) {
                 if (e.editor != activeSourceEditor || movingCaretInSource) return
                 syncBytecodeToEditor(e.newPosition)
             }
         }, this)
 
-        bytecodeEditor.caretModel.addCaretListener(object : CaretAdapter() {
+        bytecodeEditor.caretModel.addCaretListener(object : CaretListener {
             override fun caretPositionChanged(e: CaretEvent) {
                 if (movingCaretInBytecode) return
                 syncEditorToBytecode(e.newPosition)
@@ -140,17 +139,15 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
             bytecodeTextBuilder!!.appendClass(metaClass)
         }
 
-        object : WriteCommandAction<Unit>(project) {
-            override fun run(result: Result<Unit>) {
-                movingCaretInBytecode = true
-                try {
-                    bytecodeDocument.replaceString(0, bytecodeDocument.textLength, bytecodeTextBuilder!!.text)
-                }
-                finally {
-                    movingCaretInBytecode = false
-                }
+        WriteCommandAction.writeCommandAction(project).run<Throwable> {
+            movingCaretInBytecode = true
+            try {
+                bytecodeDocument.replaceString(0, bytecodeDocument.textLength, bytecodeTextBuilder!!.text)
             }
-        }.execute()
+            finally {
+                movingCaretInBytecode = false
+            }
+        }
 
         renderBytecodeAnnotations(psiFile)
     }

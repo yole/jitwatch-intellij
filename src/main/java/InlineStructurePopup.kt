@@ -22,11 +22,11 @@ import ru.yole.jitwatch.languages.forElement
 class InlineTreeStructure(val project: Project, val root: CompileNode) : AbstractTreeStructure() {
     override fun getRootElement() = InlineTreeNodeDescriptor(project, null, root, true)
 
-    override fun createDescriptor(element: Any?, parentDescriptor: NodeDescriptor<*>?) = element as NodeDescriptor<*>
+    override fun createDescriptor(element: Any, parentDescriptor: NodeDescriptor<*>?) = element as NodeDescriptor<*>
 
-    override fun getParentElement(element: Any?) = (element as InlineTreeNodeDescriptor).parentDescriptor
+    override fun getParentElement(element: Any) = (element as InlineTreeNodeDescriptor).parentDescriptor
 
-    override fun getChildElements(element: Any?) =
+    override fun getChildElements(element: Any) =
             (element as InlineTreeNodeDescriptor).compileNode.children
                     .map { InlineTreeNodeDescriptor(project, element as NodeDescriptor<*>, it )}
                     .toTypedArray()

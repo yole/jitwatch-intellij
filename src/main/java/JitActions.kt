@@ -40,7 +40,7 @@ fun loadLogAndShowUI(project: Project, logFile: File) {
                             NotificationType.ERROR))
 
         } else {
-            ToolWindowManager.getInstance(project).getToolWindow(JitReportToolWindow.ID).activate(null)
+            ToolWindowManager.getInstance(project).getToolWindow(JitReportToolWindow.ID)?.activate(null)
         }
     }
 }

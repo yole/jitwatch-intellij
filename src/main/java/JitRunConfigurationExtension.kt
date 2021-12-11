@@ -12,7 +12,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.openapi.wm.ToolWindowManager
 import org.jdom.Element
 import java.awt.BorderLayout
 import java.io.File
@@ -26,7 +25,7 @@ data class JitWatchSettings(var enabled: Boolean = false, var lastLogPath: File?
     companion object {
         private val KEY: Key<JitWatchSettings> = Key.create("ru.yole.jitwatch.settings")
 
-        fun getOrCreate(configuration: RunConfigurationBase): JitWatchSettings {
+        fun getOrCreate(configuration: RunConfigurationBase<*>): JitWatchSettings {
             var settings = configuration.getUserData(KEY)
             if (settings == null) {
                 settings = JitWatchSettings()
@@ -35,40 +34,40 @@ data class JitWatchSettings(var enabled: Boolean = false, var lastLogPath: File?
             return settings
         }
 
-        fun clear(configuration: RunConfigurationBase) {
+        fun clear(configuration: RunConfigurationBase<*>) {
             configuration.putUserData(KEY, null)
         }
     }
 }
 
 class JitRunConfigurationExtension : RunConfigurationExtension() {
-    override fun <P : RunConfigurationBase> createEditor(configuration: P): SettingsEditor<P>? {
+    override fun <P : RunConfigurationBase<*>> createEditor(configuration: P): SettingsEditor<P> {
         return JitRunConfigurationEditor()
     }
 
-    override fun cleanUserData(runConfigurationBase: RunConfigurationBase) {
+    override fun cleanUserData(runConfigurationBase: RunConfigurationBase<*>) {
         JitWatchSettings.clear(runConfigurationBase)
     }
 
     override fun getEditorTitle() = "JITWatch"
 
-    override fun isApplicableFor(configuration: RunConfigurationBase) = configuration is CommonJavaRunConfigurationParameters
+    override fun isApplicableFor(configuration: RunConfigurationBase<*>) = configuration is CommonJavaRunConfigurationParameters
 
-    override fun readExternal(runConfiguration: RunConfigurationBase, element: Element) {
+    override fun readExternal(runConfiguration: RunConfigurationBase<*>, element: Element) {
         val settings = JitWatchSettings.getOrCreate(runConfiguration)
         settings.enabled = element.getAttributeValue(JITWATCH_ENABLED_ATTRIBUTE) == "true"
     }
 
-    override fun writeExternal(runConfiguration: RunConfigurationBase, element: Element) {
+    override fun writeExternal(runConfiguration: RunConfigurationBase<*>, element: Element) {
         val settings = JitWatchSettings.getOrCreate(runConfiguration)
         if (settings.enabled) {
             element.setAttribute(JITWATCH_ENABLED_ATTRIBUTE, "true")
         }
     }
 
-    override fun <T : RunConfigurationBase> updateJavaParameters(configuration: T,
-                                                                 params: JavaParameters,
-                                                                 runnerSettings: RunnerSettings?) {
+    override fun <T : RunConfigurationBase<*>> updateJavaParameters(configuration: T,
+                                                                   params: JavaParameters,
+                                                                   runnerSettings: RunnerSettings?) {
         val settings = JitWatchSettings.getOrCreate(configuration)
         if (settings.enabled) {
             val logPath = FileUtil.generateRandomTemporaryPath()
@@ -81,11 +80,11 @@ class JitRunConfigurationExtension : RunConfigurationExtension() {
         }
     }
 
-    override fun attachToProcess(configuration: RunConfigurationBase, handler: ProcessHandler, runnerSettings: RunnerSettings?) {
+    override fun attachToProcess(configuration: RunConfigurationBase<*>, handler: ProcessHandler, runnerSettings: RunnerSettings?) {
         val logPath = JitWatchSettings.getOrCreate(configuration).lastLogPath
         if (logPath != null) {
             handler.addProcessListener(object : ProcessAdapter() {
-                override fun processTerminated(event: ProcessEvent?) {
+                override fun processTerminated(event: ProcessEvent) {
                     ApplicationManager.getApplication().invokeLater {
                         loadLogAndShowUI(configuration.project, logPath)
                     }
@@ -95,7 +94,7 @@ class JitRunConfigurationExtension : RunConfigurationExtension() {
     }
 }
 
-private class JitRunConfigurationEditor<T : RunConfigurationBase> : SettingsEditor<T>() {
+private class JitRunConfigurationEditor<T : RunConfigurationBase<*>> : SettingsEditor<T>() {
     private val editorPanel = JPanel(BorderLayout())
     private val enabledCheckbox = JCheckBox("Log compilation")
 

@@ -7,12 +7,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
+import com.intellij.psi.search.ProjectScope
 import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.TypeConversionUtil
 import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
 import org.adoptopenjdk.jitwatch.model.MetaClass
-import org.jetbrains.kotlin.idea.search.allScope
 
 class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     override fun getAllClasses(file: PsiFile): List<PsiClass> =
@@ -21,7 +21,7 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
         })
 
     override fun findClass(project: Project, metaClass: MetaClass): PsiClass? {
-        val psiClass = JavaPsiFacade.getInstance(project).findClass(metaClass.fullyQualifiedName, project.allScope())
+        val psiClass = JavaPsiFacade.getInstance(project).findClass(metaClass.fullyQualifiedName, ProjectScope.getAllScope(project))
         return if (psiClass?.language == JavaLanguage.INSTANCE) psiClass else null
     }
 
