@@ -5,7 +5,7 @@ It uses [JITWatch](https://github.com/AdoptOpenJDK/jitwatch) to load and analyze
 
 ## Video Demo
 
-[Here](https://www.youtube.com/watch?v=4W-MhGBJsFI) is a video of a demo of the JITWatch plugin, recorded at the JVM Language Summit 2016.
+[Here](https://www.youtube.com/watch?v=NIuSMzfX3g0) is a video of a demo of the JITWatch plugin, recorded at the JVM Language Summit 2016.
 
 ## Creating and Loading the Compilation Log
 
