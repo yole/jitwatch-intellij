@@ -7,9 +7,21 @@
     <description><![CDATA[
         Viewing HotSpot compilation logs in IntelliJ IDEA. See <a href="https://github.com/yole/jitwatch-intellij">GitHub</a> for documentation.
     ]]></description>
-    <version>1.0</version>
+    <change-notes>
+        <![CDATA[
+        <b>Version 1.0.2</b>
+        <ul>
+            <li>Compatibility with IntelliJ 2019.2 and later</li>
+            <li>Minimum IntelliJ Version raised to 2019.2</li>
+        </ul>
+        <b>Version 1.0.1</b>
+        <ul>
+            <li>Compatibility with IntelliJ 2018.1 and later</li>
+        </ul>
+        ]]>
+    </change-notes>
     
-    <idea-version since-build="145.1"/>
+    <idea-version since-build="181"/>
 
     <depends optional="true" config-file="plugin-kotlin.xml">org.jetbrains.kotlin</depends>
 

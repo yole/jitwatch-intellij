@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="MyMain JitWatch" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="MyMain" />
+    <module name="plugin-debug-jitwatch" />
+    <extension name="ru.yole.jitwatch.JitRunConfigurationExtension" jitwatch-enabled="true" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

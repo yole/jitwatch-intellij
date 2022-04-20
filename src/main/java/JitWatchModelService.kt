@@ -18,7 +18,7 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.util.containers.isNullOrEmpty
-import com.intellij.util.isFile
+import com.intellij.util.io.isFile
 import org.adoptopenjdk.jitwatch.core.HotSpotLogParser
 import org.adoptopenjdk.jitwatch.core.IJITListener
 import org.adoptopenjdk.jitwatch.core.ILogParseErrorListener
@@ -207,7 +207,7 @@ class JitWatchModelService(private val project: Project) {
             val methodName = methodAttrs[ATTR_NAME]
             val calleeClass = ParseUtil.lookupType(holder, parseDictionary)
             val calleeMethod = StringUtil.replaceXMLEntities(methodName)
-            val builder = StringBuilder(calleeClass)
+            val builder = StringBuilder(calleeClass ?: "<unknown>")
             builder.append(".").append(calleeMethod)
             builder.append(if (inlined) " inlined " else " not inlined ")
             builder.append("(").append(reason).append(")")

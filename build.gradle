@@ -4,19 +4,22 @@ buildscript {
         maven { url 'http://dl.bintray.com/jetbrains/intellij-plugin-service' }
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.0.3"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.31"
+        classpath "net.saliman:gradle-properties-plugin:1.4.6"
     }
 }
 
 plugins {
-    id "org.jetbrains.intellij" version "0.1.6"
+    id "org.jetbrains.intellij" version "0.4.8"
+    id "java"
+    id ("org.jetbrains.kotlin.jvm") version "1.3.31"
+    id "net.saliman.properties" version "1.4.6"
 }
 
 group 'ru.yole'
-version '1.0'
+version "${pluginVersion}-${platformVersion}"
 
-apply plugin: 'java'
-apply plugin: 'kotlin'
+def isAtLeast192 = platformVersion.toInteger() >= 192
 
 sourceCompatibility = 1.5
 
@@ -26,22 +29,45 @@ repositories {
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.3"
-    compile "org.jetbrains.kotlin:kotlin-reflect:1.0.3"
+    compile "org.jetbrains.kotlin:kotlin-stdlib:1.3.31"
+    compile "org.jetbrains.kotlin:kotlin-reflect:1.3.31"
     compile 'com.github.yole.jitwatch:core:18be9ec'
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
 
 intellij {
-    version 'IC-2016.2'
-    plugins = ['org.jetbrains.kotlin:1.0.3-release-IJ2016.1-103']
+    version "$ideaVersion"
+    if (isAtLeast192) {
+        plugins += "java"
+    }
+    plugins += "org.jetbrains.kotlin:$kotlinPluginVersion"
+}
 
-    publish {
-        username System.getenv('JETBRAINS_USER')
-        password System.getenv('JETBRAINS_PASSWORD')
+// Read sinceBuild/untilBuild from gradle-$platformVersion.properties
+patchPluginXml.sinceBuild = sinceBuild
+patchPluginXml.untilBuild = untilBuild
+
+sourceSets {
+    main {
+        for (String platformSpecificSrcDir : "$platformSpecificSrcDirs".split(",")) {
+            if (!platformSpecificSrcDir.isEmpty()) {
+                // prevent empty platformSpecificSrcDirs entries from doing anything
+                java.srcDirs("src/$platformSpecificSrcDir/java")
+            }
+        }
     }
 }
 
+runIde{
+    args "${project.projectDir}/test-project"
+}
+
+publishPlugin {
+    username System.getenv('JETBRAINS_USER')
+    password System.getenv('JETBRAINS_PASSWORD')
+}
+
+
 project.afterEvaluate {
-    project.tasks.runIdea.maxHeapSize = "2048m"
+    project.tasks.runIde.maxHeapSize = "2048m"
 }
